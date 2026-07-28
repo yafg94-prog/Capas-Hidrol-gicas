@@ -1,0 +1,118 @@
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.28.3-Firenze">
+  <identifier>INV_Juntas_de_Vigilancia</identifier>
+  <parentidentifier></parentidentifier>
+  <language>SPA</language>
+  <type>dataset</type>
+  <title>Inventario de Juntas de Vigilancia</title>
+  <abstract>CorrespondeaPoligonos que Representan el inventario de Juntas de Vigilancia 
+GEOMETRIA:
+Poligonos
+COBERTURA:
+Nacional.
+FUENTE:
+Departamento de Organizaciones de Usuario - DGA
+ESCALA:
+1:50.000
+ESCALA MAXIMA \ RANGO DE ESCALA:
+La que el Usuario estime.
+TIPO DE LEVANTAMIENTO:
+Recopilación de diversas fuentes, Cuencas, SubCuencas, SubSubcuencas.
+SISTEMA DE REFERENCIA:
+SIRGAS CHILE, Coordenadas Geograficas.
+ACTUALIZACIÓN DE LOS DATOS:
+Sin Actualizacion
+ULTIMA ACTUALIZACIÓN:
+Junio 2021
+SIMBOLOGIA OFICIAL:
+No tiene.
+RESPONSABLE DE LA ACTUALIZACIÓN:
+.......
+EN CASO DE ERRORES, COMUNICARSE CON:
+Ingeniera Civil en Geografía, Claudia Cordova, Departamento de Organizaciones de Usuario, DGA: Mail: claudia.cordova@mop.gov.cl
+Cartografo, División de Estudios y Planificación: Guillermo Tapia Molina; mail: guillermo.tapia.m@mop.gov.cl
+EN CASO DE CONSULTAS COMUNICARSE CON:
+Ingeniera Civil en Geografía, Claudia Cordova, Departamento de Organizaciones de Usuario, DGA: Mail: claudia.cordova@mop.gov.cl
+Cartografo, División de Estudios y Planificación: Guillermo Tapia Molina; mail: guillermo.tapia.m@mop.gov.cl
+LIMITACIONES DE USO: Información de Uso Libre.
+DESCRIPCION DE CAMPOS
+ID_IDE
+Código Unico IDE
+FUENTE
+Fuente de la Capa
+JV_ID
+ID de la Junta de Vigilancia
+FECHA_ACTUALIZACION
+Ultima fecha de actualización
+LEVANTAMIENTO
+Origen o Fuente de las Geometrias utilizadas
+REG_RPOU
+N° Registro Publico de organizaciones de Usuario
+ORG_USUARIO
+Nombre de la Organización de Usuario
+REGION_SIG
+Regíon de acuerdo al SIG
+AREA_km2
+Area en km2
+UTM_NORTE
+Coordenada UTM Norte
+UTM_ESTE
+Coordenada UTM Este
+JURISDICCION
+Observación Acerca de su Jurisdicción
+RES_DGA
+Número de Resolución DGA
+FECHA_RES_DGA
+Fecha de Resolución DGA
+AÑO_INSCRIPCION
+Año de Inscripción
+AÑO_CONSTITUCION
+Año de Constitución
+CUENCA_PRINCIPAL
+Cuenca Principal donde se encuentra la OUA
+RIO_ESTERO
+Río Principal
+AFLUENTE
+Si Considera afluentes
+SECCIONAMIENTO
+Si posee Seccionamiento
+COD_EXPEDIENTE
+Codigo de Expediente de la OUA
+NOM_REG
+Nombre de la Región
+NOM_PROV
+Nombre de la Provincia
+NOM_COM
+Nombre de la Comuna
+
+
+
+Poligonos que representan a las Juntas de Vigilancia Sirgas Chile, Coordenadas Geograficas Ultima actualización Junio 2021</abstract>
+  <keywords vocabulary="Buscar claves">
+    <keyword>Inventario; Juntas</keyword>
+    <keyword>Vigilancia</keyword>
+  </keywords>
+  <links/>
+  <fees></fees>
+  <constraints type="Limitaciones de uso">Sin Limitaciones, Información de uso libre al Interior y Exterior del MOP.
+</constraints>
+  <rights>Departamento de Organizaciones de Usuario - DGA&#xd;
+División de Estudios y Planificación DGA.</rights>
+  <encoding></encoding>
+  <crs>
+    <spatialrefsys nativeFormat="Wkt">
+      <wkt>GEOGCRS["SIRGAS-Chile",DATUM["SIRGAS-Chile",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["Chile - onshore and offshore. Includes Easter Island, Juan Fernandez Islands, San Felix, and Sala y Gomez."],BBOX[-59.87,-113.21,-17.5,-65.72]],ID["EPSG",9184]]</wkt>
+      <proj4>+proj=longlat +ellps=GRS80 +no_defs</proj4>
+      <srsid>63262</srsid>
+      <srid>520003262</srid>
+      <authid>EPSG:9184</authid>
+      <description>SIRGAS-Chile</description>
+      <projectionacronym>longlat</projectionacronym>
+      <ellipsoidacronym>EPSG:7019</ellipsoidacronym>
+      <geographicflag>true</geographicflag>
+    </spatialrefsys>
+  </crs>
+  <extent>
+    <spatial maxz="0" crs="EPSG:9184" minz="0" miny="-38.25150899999999865" maxx="-69.08218499999999551" maxy="-17.63429400000000058" dimensions="2" minx="-72.69826299999999719"/>
+  </extent>
+</qgis>

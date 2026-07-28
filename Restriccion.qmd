@@ -1,0 +1,135 @@
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.28.3-Firenze">
+  <identifier>TG_PROT_AREA_RESTRICCION_ZONA_PROHIBICION_VF</identifier>
+  <parentidentifier></parentidentifier>
+  <language>SPA</language>
+  <type>dataset</type>
+  <title>Areas de Restricción y Zonas de Prohibición</title>
+  <abstract>Corresponde a las Areas de Restricción y Zonas de Prohibición para la explotación y uso de Derechos de Aprovechamiento de aguas Subterraneas, es una capa que corresponde a un Subconjunto de Los Acuiferos SHAC.
+GEOMETRIA:
+Corresponde a Poligonos,
+COBERTURA:
+Nacional, 
+FUENTE:
+La geometria es digitalizada en base a Cartografia Regular IGM 1:250.000 y en algunos casos 1:50.000, la información tematica es provista a traves de Informes Tecnicos levantados por el Departamento de Administración del Recurso Hídrico.
+ESCALA:
+1:50.000 y 1:250.000
+ESCALA MAXIMA \ RANGO DE ESCALA:
+La que el Usuario estime.
+TIPO DE LEVANTAMIENTO:
+Basado en Cartografia Regular IGM 1:50.000 y 1:250.000, Cuencas BNA
+SISTEMA DE REFERENCIA:
+SIRGAS CHILE, Coordenadas Geograficas.
+ACTUALIZACIÓN DE LOS DATOS:
+La actualización de estas capas es esporadica y aleatoria según requerimientos puntuales de ciudadania o autoridad. 
+ULTIMA ACTUALIZACIÓN:
+15 NOVIEMBRE DE 2025
+SIMBOLOGIA OFICIAL:
+No tiene.
+RESPONSABLE DE LA ACTUALIZACIÓN:
+Nury Salazar - Guillermo Tapia Molina
+EN CASO DE ERRORES, COMUNICARSE CON:
+Cartografo, División de Estudios y Planificación: Guillermo Tapia Molina; mail: guillermo.tapia.m@mop.gov.cl
+Geografo, Departamento de Administración Recursos Hidricos DARH, Nury Salazar; nury.salazar@mop.gov.cl
+EN CASO DE CONSULTAS COMUNICARSE CON:
+Cartografo, División de Estudios y Planificación: Guillermo Tapia Molina; mail: guillermo.tapia.m@mop.gov.cl
+Geografo, Departamento de Administración Recursos Hidricos DARH, Nury Salazar; nury.salazar@mop.gov.cl
+LIMITACIONES DE USO: Información de Uso Libre.
+
+DESCRIPCION DE CAMPOS
+
+CAMPO
+DESCRIPCION
+ID_IDE
+Código Unico IDE
+FUENTE
+Fuente de la Capa
+FECHA_ACTUALIZACION
+Ultima fecha de actualización
+LEVANTAMIENTO
+Origen o Fuente de las Geometrias utilizadas
+ID_UNICO
+Id Unico de uso Interno DGA
+COD_SHAC
+Código del SHAC
+COD_REG
+Codigo Unico Territoral (Región) 
+REGION
+Nombre de la Región
+REGIONES
+Regiones en N° Romanos a los que pertenece el acuifero
+COD_BNA
+Codigo Cuenca BNA 
+NOM_BNA
+Nombre Cuenca BNA
+COD_BNA_AC
+Codigo cuenca según acuifero
+NOM_ACUIF
+Nombre Acuifero
+COD_BNA_SH
+Codigo SHAC según Cuenca
+SHAC
+Nombre SHAC
+TIPO_LIMIT
+Tipo de Limitación a la Explotación de Aguas Subterráneas
+RES_DGA
+Numero de Resolución DGA
+F_RES_DGA
+Fecha de Resolución DGA
+F_TRAZON
+Fecha de Toma de Razón
+F_PUB_DO
+Fecha Publicación Diario Oficial
+RESMODIF_1
+Resolución Modificatoria n° 1
+PUBMODIF_1
+Publicación Modificatoria n° 1
+MOTIV_MOD1
+Motivo Modificatoria n° 1
+RESMODIF_2
+Resolución Modificatoria n° 2
+PUBMODIF_2
+Publicación Modificatoria n° 2
+MOTIV_MOD2
+Motivo Modificatoria n° 2
+RESMODIF_3
+Resolución Modificatoria n°3
+PUBMODIF_3
+Publicación Modificatoria n° 3
+MOTIV_MOD3
+Motivo Modificatoria n° 3
+TIPOESTUDI
+Tipo de Estudio
+REFERENCIA
+Referencia del Estudio
+F_UESTUDIO
+Fecha Ultimo Estudio
+
+
+
+Poligonos que representan a las Areas de Restricción y Zonas de Prohibición. Son un Subconjunto de los Sectores Hidrogeologicos de Aprovechamiento Común, SHAC. Cobertura: Nacional Geometria: Poligonos. Georreferencias: Sirgas Chile, Coordenadas Geograficas Ultima actualización: 15 NOVIEMBRE 2025</abstract>
+  <keywords vocabulary="Buscar claves">
+    <keyword>Acuiferos; SHAC; DGA; Areas Restricción; Zonas Prohibición</keyword>
+  </keywords>
+  <links/>
+  <fees></fees>
+  <constraints type="Limitaciones de uso">Sin Limitaciones, Información de uso libre al Interior y Exterior del MOP.</constraints>
+  <rights>Departamento de Administración de Recursos Hidricos, DARH de la DGA.</rights>
+  <encoding></encoding>
+  <crs>
+    <spatialrefsys nativeFormat="Wkt">
+      <wkt>GEOGCRS["SIRGAS-Chile",DATUM["SIRGAS-Chile",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["Chile - onshore and offshore. Includes Easter Island, Juan Fernandez Islands, San Felix, and Sala y Gomez."],BBOX[-59.87,-113.21,-17.5,-65.72]],ID["EPSG",9184]]</wkt>
+      <proj4>+proj=longlat +ellps=GRS80 +no_defs</proj4>
+      <srsid>63262</srsid>
+      <srid>520003262</srid>
+      <authid>EPSG:9184</authid>
+      <description>SIRGAS-Chile</description>
+      <projectionacronym>longlat</projectionacronym>
+      <ellipsoidacronym>EPSG:7019</ellipsoidacronym>
+      <geographicflag>true</geographicflag>
+    </spatialrefsys>
+  </crs>
+  <extent>
+    <spatial maxz="0" crs="EPSG:9184" minz="0" miny="-53.63395899999999727" maxx="-67.33548999999999296" maxy="-18.06743499999999969" dimensions="2" minx="-73.85622999999999649"/>
+  </extent>
+</qgis>
