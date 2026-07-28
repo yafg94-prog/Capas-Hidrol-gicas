@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 <meta charset="utf-8">
-<title>Mapaencas</title>
+<title>Mapa DGA RM</title>
 
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<style>
-html, body, #map {
-    height: 100%;
-    width: 100%;
-    margin: 0;
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/distody,#map{
+    height:100%;
+    width:100%;
+    margin:0;
 }
+
+.leaflet-tooltip{
+    background:white;
+    border:none;
+    box-shadow:none;
+    font-size:10px;
+    font-weight:bold;
+}
+
 </style>
 
 </head>
@@ -23,138 +30,120 @@ html, body, #map {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<script>
-
-const map = L.map('map');
-
-alert('Librería Leaflet cargada');
+ap = L.map('map');
 
 L.tileLayer(
 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    maxZoom:19,
+    attribution:'© OpenStreetMap'
 }
 ).addTo(map);
 
-let subcuencas;
-let juntas;
-let Restriccion;
-
-    const controlCapas = L.control.layers(
-    null,
-    null,
-    {
-        collapsed:false
-    }
+const controlCapas = L.control.layers(
+    {},
+    {},
+    {collapsed:false}
 ).addTo(map);
-    
-fetch('./SubRM2.geojson')
-.then(response => {
-    console.log(response);
-    return response.json();
-})
-.then(data => {
 
-    alert('GeoJSON cargado');
+const grupoGeneral = L.featureGroup();
 
-    console.log(data);
-
-    const capa = L.geoJSON(data, {
-    style: {
-        color: 'red',
-        weight: 3,
-        fillColor: 'yellow',
-        fillOpacity: 0.7
-    },
-
-    onEachFeature: function(feature, layer) {
+function crearPopup(feature){
 
     let html = '';
 
-    for (let campo in feature.properties) {
-        html += '<b>' + campo + '</b>: ' +
-                feature.properties[campo] +
-                '<br>';
+    for(let campo in feature.properties){
+
+        html +=
+        '<b>' + campo + '</b>: ' +
+        feature.properties[campo] +
+        '<br>';
+
     }
 
-    layer.bindPopup(html);
-
-    layer.bindTooltip(
-        feature.properties.NOM_SSUBC,
-        {
-            permanent: true,
-            direction: 'center'
-        }
-    );
+    return html;
 }
 
-}).addTo(map);
+function crearCapa(url,color,nombre,mostrarEtiqueta=false){
 
-fetch('./SubRM2.geojson')
-.then(r => r.json())
-.then(data => {
+    fetch(url)
+    .then(r=>r.json())
+    .then(data=>{
 
-    subcuencas = L.geoJSON(data,{
-        style:{
-            color:'red'
-        }
+        const capa = L.geoJSON(data,{
+
+            style:{
+                color:color,
+                weight:2,
+                fillOpacity:0.5
+            },
+
+            onEachFeature:function(feature,layer){
+
+                layer.bindPopup(
+                    crearPopup(feature)
+                );
+
+                if(
+                    mostrarEtiqueta &&
+                    feature.properties.NOM_SSUBC
+                ){
+
+                    layer.bindTooltip(
+                        feature.properties.NOM_SSUBC,
+                        {
+                            permanent:true,
+                            direction:'center'
+                        }
+                    );
+
+                }
+
+            }
+
+        });
+
+        controlCapas.addOverlay(
+            capa,
+            nombre
+        );
+
+        capa.addTo(map);
+
+        grupoGeneral.addLayer(capa);
+
+        map.fitBounds(
+            grupoGeneral.getBounds()
+        );
+
     });
 
-    fetch('./Juntas.geojson')
-.then(r => r.json())
-.then(data => {
+}
 
-    juntas = L.geoJSON(data,{
-        style:{
-            color:'blue'
-        }
-    });
+/* SUBSUBCUENCAS */
 
-    controlCapas.addOverlay(
-        juntas,
-        'Juntas de Vigilancia'
-    );
+crearCapa(
+    './SubRM2.geojson',
+    'red',
+    'Subsubcuencas',
+    true
+);
 
-});
+/* JUNTAS */
 
-fetch('./Restriccion.geojson')
-.then(r => r.json())
-.then(data => {
+crearCapa(
+    './Juntas.geojson',
+    'blue',
+    'Juntas de Vigilancia'
+);
 
-    juntas = L.geoJSON(data,{
-        style:{
-            color:'green'
-        }
-    });
+/* RESTRICCIONES */
 
-    controlCapas.addOverlay(
-        juntas,
-        'Juntas de Vigilancia'
-    );
-
-});
-    
-    controlCapas.addOverlay(
-        subcuencas,
-        'Subsubcuencas'
-    );
-
-    subcuencas.addTo(map);
-
-});
-
-    map.fitBounds(capa.getBounds());
-
-})
-.catch(error => {
-
-    alert("ERROR: " + error);
-
-    console.error(error);
-
-});
-
+crearCapa(
+    './Restriccion.geojson',
+    'green',
+    'Restricciones'
+);
 
 </script>
 
