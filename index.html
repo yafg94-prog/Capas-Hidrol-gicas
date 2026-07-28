@@ -14,15 +14,11 @@ html, body, #map {
 </style>
 
 </head>
-
 <body>
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leafletrchivo no tenga entidades HTML como:
-
-```html
-&lt;html&gt;
+<script src="https://unpkg.com/leaflet/dist/leaflet.css"/script>
 
 <script>
 
@@ -35,7 +31,7 @@ maxZoom:19
 }
 ).addTo(map);
 
-fetch('Subcuencas Json.geojson')
+fetch('./Subcuencas Json.geojson')
 .then(response => response.json())
 .then(data => {
 
@@ -44,7 +40,10 @@ var capa = L.geoJSON(data).addTo(map);
 map.fitBounds(capa.getBounds());
 
 })
-.catch(error => console.log(error));
+.catch(error => {
+    console.error(error);
+    alert(error);
+});
 
 </script>
 
