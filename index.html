@@ -1,22 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>Mapaencas</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-html, body, #map {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-}
-</style>
+    <meta charset="utf-8">
+    <title>Mapaencas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ✅ Corregido: const map, no ap
 const map = L.map('map');
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -24,7 +23,6 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas vacío, se irán agregando
 const controlCapas = L.control.layers({}, {}, { collapsed: false }).addTo(map);
 const grupoGeneral = L.featureGroup();
 
@@ -38,7 +36,12 @@ function crearPopup(feature) {
 
 function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
     return fetch(url)
-        .then(r => r.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`No se pudo cargar "${url}" (Estado: ${response.status})`);
+            }
+            return response.json();
+        })
         .then(data => {
             const capa = L.geoJSON(data, {
                 style: {
@@ -48,7 +51,7 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
                 },
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(crearPopup(feature));
-                    if (mostrarEtiqueta && feature.properties.NOM_SSUBC) {
+                    if (mostrarEtiqueta && feature.properties && feature.properties.NOM_SSUBC) {
                         layer.bindTooltip(
                             feature.properties.NOM_SSUBC,
                             { permanent: true, direction: 'center' }
@@ -60,15 +63,15 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
             controlCapas.addOverlay(capa, nombre);
             capa.addTo(map);
             grupoGeneral.addLayer(capa);
-            return capa; // devolvemos la capa por si queremos usarla después
+            return capa;
         });
 }
 
-// Cargar todas las capas y luego ajustar la vista una sola vez
+// Carga de capas
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
-    crearCapa('./Restrccion.geojson', 'green', 'Restricciones') // Asegúrate del nombre exacto
+    crearCapa('./Restrccion.geojson', 'green', 'Restricciones') // Verifica la ortografía exacta en GitHub
 ])
 .then(() => {
     if (grupoGeneral.getLayers().length > 0) {
@@ -76,8 +79,8 @@ Promise.all([
     }
 })
 .catch(error => {
-    alert('Error al cargar alguna capa: ' + error);
-    console.error(error);
+    alert(error.message);
+    console.error('Detalle del error:', error);
 });
 </script>
 </body>
