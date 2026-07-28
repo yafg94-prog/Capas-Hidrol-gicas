@@ -47,14 +47,29 @@ fetch('./SubRM2.geojson')
 
     console.log(data);
 
-    const capa = L.geoJSON(data,{
-        style:{
-            color:'red',
-            weight:3,
-            fillColor:'yellow',
-            fillOpacity:0.7
+    const capa = L.geoJSON(data, {
+    style: {
+        color: 'red',
+        weight: 3,
+        fillColor: 'yellow',
+        fillOpacity: 0.7
+    },
+
+    onEachFeature: function(feature, layer) {
+
+        let html = '';
+
+        for (let campo in feature.properties) {
+            html += '<b>' + campo + '</b>: ' +
+                    feature.properties[campo] +
+                    '<br>';
         }
-    }).addTo(map);
+
+        layer.bindPopup(html);
+
+    }
+
+}).addTo(map);
 
     map.fitBounds(capa.getBounds());
 
