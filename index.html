@@ -57,17 +57,24 @@ fetch('./SubRM2.geojson')
 
     onEachFeature: function(feature, layer) {
 
-        let html = '';
+    let html = '';
 
-        for (let campo in feature.properties) {
-            html += '<b>' + campo + '</b>: ' +
-                    feature.properties[campo] +
-                    '<br>';
-        }
-
-        layer.bindPopup(html);
-
+    for (let campo in feature.properties) {
+        html += '<b>' + campo + '</b>: ' +
+                feature.properties[campo] +
+                '<br>';
     }
+
+    layer.bindPopup(html);
+
+    layer.bindTooltip(
+        feature.properties.NOM_SSUBC,
+        {
+            permanent: true,
+            direction: 'center'
+        }
+    );
+}
 
 }).addTo(map);
 
