@@ -3,9 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Mapaencas</title>
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <style>
 html, body, #map {
     height: 100%;
@@ -15,96 +13,72 @@ html, body, #map {
 </style>
 </head>
 <body>
-
 <div id="map"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-// Inicializar el mapa
+// ✅ Corregido: const map, no ap
 const map = L.map('map');
 
-// Capa base
-L.tileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// Control de capas vacío, se irán agregando
+const controlCapas = L.control.layers({}, {}, { collapsed: false }).addTo(map);
+const grupoGeneral = L.featureGroup();
+
+function crearPopup(feature) {
+    let html = '';
+    for (let campo in feature.properties) {
+        html += '<b>' + campo + '</b>: ' + feature.properties[campo] + '<br>';
     }
-).addTo(map);
-
-// Grupo para agrupar todas las capas y calcular los límites
-const todasLasCapas = L.featureGroup().addTo(map);
-
-// Función auxiliar para crear una capa GeoJSON con estilo, popup y tooltip
-function crearCapa(geojsonData, color, fillColor, campoTooltip) {
-    const capa = L.geoJSON(geojsonData, {
-        style: {
-            color: color,
-            weight: 3,
-            fillColor: fillColor,
-            fillOpacity: 0.7
-        },
-        onEachFeature: function (feature, layer) {
-            // Construir popup con todas las propiedades
-            let html = '';
-            for (let campo in feature.properties) {
-                html += '<b>' + campo + '</b>: ' +
-                        feature.properties[campo] +
-                        '<br>';
-            }
-            layer.bindPopup(html);
-
-            // Tooltip permanente con el valor del campo indicado (si existe)
-            if (campoTooltip && feature.properties[campoTooltip]) {
-                layer.bindTooltip(
-                    feature.properties[campoTooltip],
-                    {
-                        permanent: true,
-                        direction: 'center'
-                    }
-                );
-            }
-        }
-    });
-    return capa;
+    return html;
 }
 
-// Cargar las tres capas a la vez
+function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
+    return fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            const capa = L.geoJSON(data, {
+                style: {
+                    color: color,
+                    weight: 2,
+                    fillOpacity: 0.5
+                },
+                onEachFeature: function (feature, layer) {
+                    layer.bindPopup(crearPopup(feature));
+                    if (mostrarEtiqueta && feature.properties.NOM_SSUBC) {
+                        layer.bindTooltip(
+                            feature.properties.NOM_SSUBC,
+                            { permanent: true, direction: 'center' }
+                        );
+                    }
+                }
+            });
+
+            controlCapas.addOverlay(capa, nombre);
+            capa.addTo(map);
+            grupoGeneral.addLayer(capa);
+            return capa; // devolvemos la capa por si queremos usarla después
+        });
+}
+
+// Cargar todas las capas y luego ajustar la vista una sola vez
 Promise.all([
-    fetch('./SubRM2.geojson').then(r => r.json()),
-    fetch('./Juntas.geojson').then(r => r.json()),
-    fetch('./Restrccion.geojson').then(r => r.json())
+    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
+    crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
+    crearCapa('./Restrccion.geojson', 'green', 'Restricciones') // Asegúrate del nombre exacto
 ])
-.then(([dataSubRM2, dataJuntas, dataRestrccion]) => {
-    // Crear cada capa con un color distinto
-    const capaSubRM2 = crearCapa(dataSubRM2, 'red', 'yellow', 'NOM_SSUBC');
-    const capaJuntas = crearCapa(dataJuntas, 'blue', 'lightblue', 'NOMBRE'); // Ajusta el campo del tooltip
-    const capaRestrccion = crearCapa(dataRestrccion, 'green', 'lightgreen', 'NOMBRE'); // Ajusta el campo del tooltip
-
-    // Añadir las capas al grupo (así se muestran inicialmente)
-    capaSubRM2.addTo(todasLasCapas);
-    capaJuntas.addTo(todasLasCapas);
-    capaRestrccion.addTo(todasLasCapas);
-
-    // Panel de control con checkboxes (esquina superior derecha por defecto)
-    const overlayMaps = {
-        "SubRM2": capaSubRM2,
-        "Juntas": capaJuntas,
-        "Restricción": capaRestrccion
-    };
-    L.control.layers(null, overlayMaps).addTo(map);
-
-    // Ajustar vista a todas las capas
-    map.fitBounds(todasLasCapas.getBounds());
-
-    alert('Todas las capas se cargaron correctamente.');
+.then(() => {
+    if (grupoGeneral.getLayers().length > 0) {
+        map.fitBounds(grupoGeneral.getBounds());
+    }
 })
 .catch(error => {
-    alert("ERROR al cargar las capas: " + error);
+    alert('Error al cargar alguna capa: ' + error);
     console.error(error);
 });
 </script>
-
 </body>
 </html>
