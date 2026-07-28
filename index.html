@@ -2,13 +2,11 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Mapa Hidrológico</title>
+<title>Mapa de Subcuencas</title>
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-00%;
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4ml, body, #map {
+    height: 100%;
+    width: 100%;
     margin: 0;
 }
 </style>
@@ -19,32 +17,39 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leafletscript>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/ipt>
 
-var map = L.map('map').setView([-33,-70],6);
+<script>
+
+const map = L.map('map');
 
 L.tileLayer(
 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 {
-    maxZoom:19
+    maxZoom:19,
+    attribution:'© OpenStreetMap'
 }
 ).addTo(map);
 
 fetch('./Subcuencas Json.geojson')
-.then(function(response){
-    return response.json();
-})
-.then(function(data){
+.then(response => response.json())
+.then(data => {
 
-    var capa = L.geoJSON(data).addTo(map);
+    const capa = L.geoJSON(data,{
+        style:{
+            color:'#0046ad',
+            weight:1,
+            fillColor:'#55aaff',
+            fillOpacity:0.4
+        }
+    }).addTo(map);
 
     map.fitBounds(capa.getBounds());
 
 })
-.catch(function(error){
-
+.catch(error=>{
     console.log(error);
-
+    alert(error);
 });
 
 </script>
