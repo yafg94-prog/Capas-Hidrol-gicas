@@ -71,7 +71,7 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
-    crearCapa('./Restrccion.geojson', 'green', 'Restricciones') // Verifica la ortografía exacta en GitHub
+    crearCapa('./Restriccion.geojson', 'green', 'Restricciones') // Verifica la ortografía exacta en GitHub
 ])
 .then(() => {
     if (grupoGeneral.getLayers().length > 0) {
