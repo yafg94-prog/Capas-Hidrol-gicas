@@ -4,21 +4,22 @@
 <meta charset="utf-8">
 <title>Mapa Hidrológico</title>
 
-<link relnpkg.com/leaflet/dist/leaflet.css
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 html, body, #map {
-    height:100%;
-    margin:0;
+    height: 100%;
+    margin: 0;
 }
 </style>
 
 </head>
+
 <body>
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/ipt>
+<script src="https://unpkg.com/leaflet/dist/leaflet.css"/script>
 
 <script>
 
@@ -32,14 +33,15 @@ maxZoom:19
 ).addTo(map);
 
 fetch('Subcuencas Json.geojson')
-.then(r => r.json())
+.then(response => response.json())
 .then(data => {
 
 var capa = L.geoJSON(data).addTo(map);
 
 map.fitBounds(capa.getBounds());
 
-});
+})
+.catch(error => console.log(error));
 
 </script>
 
