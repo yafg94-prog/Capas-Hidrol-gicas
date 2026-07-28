@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapas_DGA</title>
+    <title>Mapas Hidro - Ubicación y Metadata</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -10,13 +10,37 @@
             width: 100%;
             margin: 0;
         }
+        /* Botón flotante para ubicarte */
+        .btn-ubicacion {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .btn-ubicacion:hover {
+            background: #f4f4f4;
+        }
     </style>
 </head>
 <body>
+
+<button class="btn-ubicacion" onclick="obtenerUbicacion()">📍 Mi Ubicación</button>
 <div id="map"></div>
+
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Turf.js para análisis espacial (Punto en Polígono) -->
+<script src="https://unpkg.com/@turf/turf@6/turf.min.min.js"></script>
+
 <script>
-const map = L.map('map');
+const map = L.map('map').setView([-33.45, -70.66], 10); // Vista inicial por defecto
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -25,6 +49,10 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 const controlCapas = L.control.layers({}, {}, { collapsed: false }).addTo(map);
 const grupoGeneral = L.featureGroup();
+
+// Guardaremos las referencias de las capas GeoJSON para poder analizarlas con Turf.js
+const capasCargadas = []; 
+let marcadorUbicacion = null;
 
 function crearPopup(feature) {
     let html = '';
@@ -63,15 +91,19 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
             controlCapas.addOverlay(capa, nombre);
             capa.addTo(map);
             grupoGeneral.addLayer(capa);
+
+            // Almacenamos los datos originales GeoJSON y el nombre de la capa para el análisis posterior
+            capasCargadas.push({ nombre: nombre, geojson: data });
+
             return capa;
         });
 }
 
-// Carga de capas
+// Cargar capas
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
-    crearCapa('./Restriccion.geojson', 'green', 'Restricciones') // Verifica la ortografía exacta en GitHub
+    crearCapa('./Restriccion.geojson', 'green', 'Restricciones')
 ])
 .then(() => {
     if (grupoGeneral.getLayers().length > 0) {
@@ -80,7 +112,64 @@ Promise.all([
 })
 .catch(error => {
     alert(error.message);
-    console.error('Detalle del error:', error);
+    console.error('Error:', error);
+});
+
+// --- FUNCIONALIDAD DE GEOLOCALIZACIÓN Y CONSULTA DE METADATA ---
+
+function obtenerUbicacion() {
+    if (!navigator.geolocation) {
+        alert("Tu navegador no soporta geolocalización.");
+        return;
+    }
+
+    map.locate({ setView: true, maxZoom: 15, enableHighAccuracy: true });
+}
+
+// Evento cuando se encuentra la posición del usuario
+map.on('locationfound', function(e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    // Crear punto de Turf.js (Nota: Turf utiliza la convención [longitud, latitud])
+    const puntoUsuario = turf.point([lng, lat]);
+
+    let reporteMetadata = `<b>📍 Tu posición actual:</b><br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}<hr>`;
+    let halladoEnAlgunaCapa = false;
+
+    // Recorrer todas las capas GeoJSON cargadas
+    capasCargadas.forEach(item => {
+        item.geojson.features.forEach(feature => {
+            // Verificar si el punto está dentro del polígono/geometría
+            if (turf.booleanPointInPolygon(puntoUsuario, feature)) {
+                halladoEnAlgunaCapa = true;
+                reporteMetadata += `<b>Capa: ${item.nombre}</b><br>`;
+                for (let propiedad in feature.properties) {
+                    reporteMetadata += `• <b>${propiedad}:</b> ${feature.properties[propiedad]}<br>`;
+                }
+                reporteMetadata += `<br>`;
+            }
+        });
+    });
+
+    if (!halladoEnAlgunaCapa) {
+        reporteMetadata += `<i>No te encuentras dentro de ningún polígono de las capas cargadas.</i>`;
+    }
+
+    // Actualizar o crear el marcador en el mapa
+    if (marcadorUbicacion) {
+        map.removeLayer(marcadorUbicacion);
+    }
+
+    marcadorUbicacion = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(reporteMetadata)
+        .openPopup();
+});
+
+// Evento en caso de error de lectura de GPS
+map.on('locationerror', function(e) {
+    alert("Error al obtener la ubicación: " + e.message + "\n\nAsegúrate de haber otorgado permisos de GPS/Ubicación en tu navegador.");
 });
 </script>
 </body>
