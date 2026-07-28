@@ -4,45 +4,47 @@
 <meta charset="utf-8">
 <title>Mapa Hidrológico</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body, #map {
-    height: 100%;
+00%;
     margin: 0;
 }
 </style>
 
 </head>
+
 <body>
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.css"/script>
-
-<script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leafletscript>
 
 var map = L.map('map').setView([-33,-70],6);
 
 L.tileLayer(
 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 {
-maxZoom:19
+    maxZoom:19
 }
 ).addTo(map);
 
 fetch('./Subcuencas Json.geojson')
-.then(response => response.json())
-.then(data => {
+.then(function(response){
+    return response.json();
+})
+.then(function(data){
 
-var capa = L.geoJSON(data).addTo(map);
+    var capa = L.geoJSON(data).addTo(map);
 
-map.fitBounds(capa.getBounds());
+    map.fitBounds(capa.getBounds());
 
 })
-.catch(error => {
-    console.error(error);
-    alert(error);
+.catch(function(error){
+
+    console.log(error);
+
 });
 
 </script>
