@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapaencas - Ubicación Exacta y Metadata</title>
+    <title>Mapaencas - GPS de Alta Precisión</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -10,7 +10,6 @@
             width: 100%;
             margin: 0;
         }
-        /* Botón de ubicación */
         .btn-ubicacion {
             position: absolute;
             top: 15px;
@@ -33,12 +32,10 @@
 </head>
 <body>
 
-<button class="btn-ubicacion" onclick="obtenerUbicacionExacta()">📍 Mi Ubicación Exacta</button>
+<button class="btn-ubicacion" onclick="iniciarSeguimientoGPS()">📍 Forzar GPS Exacto</button>
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Turf.js para análisis espacial -->
 <script src="https://unpkg.com/@turf/turf@6/turf.min.min.js"></script>
 
 <script>
@@ -49,7 +46,6 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas a la izquierda (bajo zoom)
 const controlCapas = L.control.layers({}, {}, { 
     collapsed: false, 
     position: 'topleft' 
@@ -58,9 +54,9 @@ const controlCapas = L.control.layers({}, {}, {
 const grupoGeneral = L.featureGroup();
 const capasCargadas = []; 
 
-// Variables para los marcadores de precisión roja y área de tolerancia
 let puntoRojoUbicacion = null;
 let circuloPrecision = null;
+let watchId = null;
 
 function crearPopup(feature) {
     let html = '';
@@ -121,34 +117,40 @@ Promise.all([
     console.error('Error al cargar capas:', error);
 });
 
-// --- GEOLOCALIZACIÓN DE ALTA PRECISIÓN ---
+// --- RASTREO CONTINUO CON ALTA PRECISIÓN (GPS DE HARDWARE) ---
 
-function obtenerUbicacionExacta() {
+function iniciarSeguimientoGPS() {
     if (!navigator.geolocation) {
         alert("Tu navegador no soporta geolocalización.");
         return;
     }
 
-    // Configuración para forzar GPS de alta precisión en teléfonos móviles
-    map.locate({
-        setView: true,
-        maxZoom: 18,               // Zoom cercano para ver el detalle exacto
-        enableHighAccuracy: true,  // Forzar uso de GPS de hardware
-        timeout: 10000,            // Esperar hasta 10 segundos para fijar satélites
-        maximumAge: 0              // No usar lecturas guardadas en caché
-    });
+    // Si ya había un rastreo activo, lo reiniciamos
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+    }
+
+    const opcionesGPS = {
+        enableHighAccuracy: true, // EXIGE el chip GPS
+        timeout: 15000,            // Espera hasta 15s a la mejor señal
+        maximumAge: 0              // Cero memoria caché, requiere lectura en vivo
+    };
+
+    // Usamos watchPosition en lugar de getCurrentPosition
+    watchId = navigator.geolocation.watchPosition(actualizarUbicacion, manejarErrorGPS, opcionesGPS);
 }
 
-map.on('locationfound', function(e) {
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-    const precisionMetros = e.accuracy; // Margen de error en metros entregado por el GPS
+function actualizarUbicacion(posicion) {
+    const lat = posicion.coords.latitude;
+    const lng = posicion.coords.longitude;
+    const precisionMetros = posicion.coords.accuracy;
 
+    const latLng = [lat, lng];
     const puntoUsuario = turf.point([lng, lat]);
 
-    let reporteMetadata = `<b>📍 Tu posición exacta:</b><br>`;
+    let reporteMetadata = `<b>📍 Posición GPS en vivo:</b><br>`;
     reporteMetadata += `<b>Lat:</b> ${lat.toFixed(6)}, <b>Lng:</b> ${lng.toFixed(6)}<br>`;
-    reporteMetadata += `<small><b>Precisión GPS:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
+    reporteMetadata += `<small><b>Margen de error:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
 
     let halladoEnAlgunaCapa = false;
 
@@ -170,35 +172,56 @@ map.on('locationfound', function(e) {
         reporteMetadata += `<i>No te encuentras dentro de ningún polígono de las capas cargadas.</i>`;
     }
 
-    // Limpiar marcadores anteriores si ya existían
-    if (puntoRojoUbicacion) map.removeLayer(puntoRojoUbicacion);
-    if (circuloPrecision) map.removeLayer(circuloPrecision);
+    // Dibujar o actualizar círculo de margen de error
+    if (circuloPrecision) {
+        circuloPrecision.setLatLng(latLng).setRadius(precisionMetros);
+    } else {
+        circuloPrecision = L.circle(latLng, {
+            radius: precisionMetros,
+            color: '#ff0000',
+            fillColor: '#ff0000',
+            fillOpacity: 0.15,
+            stroke: false
+        }).addTo(map);
+    }
 
-    // 1. Círculo suave que muestra el radio de tolerancia del GPS
-    circuloPrecision = L.circle(e.latlng, {
-        radius: precisionMetros,
-        color: '#ff0000',
-        fillColor: '#ff0000',
-        fillOpacity: 0.15,
-        stroke: false
-    }).addTo(map);
+    // Dibujar o actualizar el PUNTO ROJO EXACTO
+    if (puntoRojoUbicacion) {
+        puntoRojoUbicacion.setLatLng(latLng).getPopup().setContent(reporteMetadata);
+    } else {
+        puntoRojoUbicacion = L.circleMarker(latLng, {
+            radius: 9,
+            color: '#ffffff',
+            weight: 3,
+            fillColor: '#ff0000',
+            fillOpacity: 1.0
+        })
+        .addTo(map)
+        .bindPopup(reporteMetadata);
 
-    // 2. Punto Rojo Preciso e Intenso
-    puntoRojoUbicacion = L.circleMarker(e.latlng, {
-        radius: 8,              // Tamaño del punto rojo
-        color: '#ffffff',       // Borde blanco para resaltar
-        weight: 2,
-        fillColor: '#ff0000',   // Rojo puro
-        fillOpacity: 1.0
-    })
-    .addTo(map)
-    .bindPopup(reporteMetadata)
-    .openPopup();
-});
+        // Centrar el mapa con zoom alto en el primer punto válido encontrado
+        map.setView(latLng, 18);
+        puntoRojoUbicacion.openPopup();
+    }
+}
 
-map.on('locationerror', function(e) {
-    alert("No se pudo obtener la ubicación exacta: " + e.message + "\n\nAsegúrate de tener activado el GPS/Ubicación en los ajustes de tu teléfono.");
-});
+function manejarErrorGPS(error) {
+    let mensaje = "";
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            mensaje = "Permiso denegado. Ve a los ajustes de tu navegador en el celular y activa 'Ubicación precisa'.";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            mensaje = "La señal de GPS no está disponible. Asegúrate de estar al aire libre.";
+            break;
+        case error.TIMEOUT:
+            mensaje = "Se agotó el tiempo buscando satélites. Reintenta al aire libre.";
+            break;
+        default:
+            mensaje = error.message;
+    }
+    alert("Error de GPS: " + mensaje);
+}
 </script>
 </body>
 </html>
