@@ -128,14 +128,14 @@ function iniciarGeolocalizacionRobusta() {
     // Configuración 1: Intento primario con Alta Precisión (GPS) y Timeout extendido (20 segundos)
     const opcionesAltaPrecision = {
         enableHighAccuracy: true,
-        timeout: 20000, 
+        timeout: 60000, 
         maximumAge: 0
     };
 
     // Configuración 2: Respaldo con Precisión Red/Celular en caso de fallo por Timeout
     const opcionesRespaldo = {
         enableHighAccuracy: false,
-        timeout: 10000,
+        timeout: 30000,
         maximumAge: 0
     };
 
