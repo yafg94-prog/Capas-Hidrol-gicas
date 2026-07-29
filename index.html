@@ -133,7 +133,7 @@ function obtenerUbicacionExacta() {
         setView: false,
         maxZoom: 18,
         enableHighAccuracy: true,  // Forzar GPS de precisión por hardware
-        timeout: 25000,             // 25 segundos para fijar satélites en terreno
+        timeout: 60000,             // 25 segundos para fijar satélites en terreno
         maximumAge: 0               // Cero lecturas guardadas previa
     });
 }
