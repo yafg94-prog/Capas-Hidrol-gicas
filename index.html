@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapaencas - Ubicación y Metadata</title>
+    <title>Mapaencas - Ubicación Exacta y Metadata</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -10,7 +10,7 @@
             width: 100%;
             margin: 0;
         }
-        /* Botón de ubicación despejado en la esquina superior derecha */
+        /* Botón de ubicación */
         .btn-ubicacion {
             position: absolute;
             top: 15px;
@@ -33,12 +33,12 @@
 </head>
 <body>
 
-<button class="btn-ubicacion" onclick="obtenerUbicacion()">📍 Mi Ubicación</button>
+<button class="btn-ubicacion" onclick="obtenerUbicacionExacta()">📍 Mi Ubicación Exacta</button>
 <div id="map"></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Turf.js para consulta espacial -->
+<!-- Turf.js para análisis espacial -->
 <script src="https://unpkg.com/@turf/turf@6/turf.min.min.js"></script>
 
 <script>
@@ -49,7 +49,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas ubicado a la izquierda (topleft), justo abajo del zoom (+/-)
+// Control de capas a la izquierda (bajo zoom)
 const controlCapas = L.control.layers({}, {}, { 
     collapsed: false, 
     position: 'topleft' 
@@ -57,7 +57,10 @@ const controlCapas = L.control.layers({}, {}, {
 
 const grupoGeneral = L.featureGroup();
 const capasCargadas = []; 
-let marcadorUbicacion = null;
+
+// Variables para los marcadores de precisión roja y área de tolerancia
+let puntoRojoUbicacion = null;
+let circuloPrecision = null;
 
 function crearPopup(feature) {
     let html = '';
@@ -102,7 +105,7 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas con el nombre corregido "Restriccion.geojson"
+// Carga de capas
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
@@ -118,23 +121,38 @@ Promise.all([
     console.error('Error al cargar capas:', error);
 });
 
-// Geolocalización y cruce de datos
-function obtenerUbicacion() {
+// --- GEOLOCALIZACIÓN DE ALTA PRECISIÓN ---
+
+function obtenerUbicacionExacta() {
     if (!navigator.geolocation) {
         alert("Tu navegador no soporta geolocalización.");
         return;
     }
-    map.locate({ setView: true, maxZoom: 15, enableHighAccuracy: true });
+
+    // Configuración para forzar GPS de alta precisión en teléfonos móviles
+    map.locate({
+        setView: true,
+        maxZoom: 18,               // Zoom cercano para ver el detalle exacto
+        enableHighAccuracy: true,  // Forzar uso de GPS de hardware
+        timeout: 10000,            // Esperar hasta 10 segundos para fijar satélites
+        maximumAge: 0              // No usar lecturas guardadas en caché
+    });
 }
 
 map.on('locationfound', function(e) {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
+    const precisionMetros = e.accuracy; // Margen de error en metros entregado por el GPS
+
     const puntoUsuario = turf.point([lng, lat]);
 
-    let reporteMetadata = `<b>📍 Tu posición actual:</b><br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}<hr>`;
+    let reporteMetadata = `<b>📍 Tu posición exacta:</b><br>`;
+    reporteMetadata += `<b>Lat:</b> ${lat.toFixed(6)}, <b>Lng:</b> ${lng.toFixed(6)}<br>`;
+    reporteMetadata += `<small><b>Precisión GPS:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
+
     let halladoEnAlgunaCapa = false;
 
+    // Cruce espacial con Turf.js
     capasCargadas.forEach(item => {
         item.geojson.features.forEach(feature => {
             if (turf.booleanPointInPolygon(puntoUsuario, feature)) {
@@ -152,18 +170,34 @@ map.on('locationfound', function(e) {
         reporteMetadata += `<i>No te encuentras dentro de ningún polígono de las capas cargadas.</i>`;
     }
 
-    if (marcadorUbicacion) {
-        map.removeLayer(marcadorUbicacion);
-    }
+    // Limpiar marcadores anteriores si ya existían
+    if (puntoRojoUbicacion) map.removeLayer(puntoRojoUbicacion);
+    if (circuloPrecision) map.removeLayer(circuloPrecision);
 
-    marcadorUbicacion = L.marker([lat, lng])
-        .addTo(map)
-        .bindPopup(reporteMetadata)
-        .openPopup();
+    // 1. Círculo suave que muestra el radio de tolerancia del GPS
+    circuloPrecision = L.circle(e.latlng, {
+        radius: precisionMetros,
+        color: '#ff0000',
+        fillColor: '#ff0000',
+        fillOpacity: 0.15,
+        stroke: false
+    }).addTo(map);
+
+    // 2. Punto Rojo Preciso e Intenso
+    puntoRojoUbicacion = L.circleMarker(e.latlng, {
+        radius: 8,              // Tamaño del punto rojo
+        color: '#ffffff',       // Borde blanco para resaltar
+        weight: 2,
+        fillColor: '#ff0000',   // Rojo puro
+        fillOpacity: 1.0
+    })
+    .addTo(map)
+    .bindPopup(reporteMetadata)
+    .openPopup();
 });
 
 map.on('locationerror', function(e) {
-    alert("Error de ubicación: " + e.message);
+    alert("No se pudo obtener la ubicación exacta: " + e.message + "\n\nAsegúrate de tener activado el GPS/Ubicación en los ajustes de tu teléfono.");
 });
 </script>
 </body>
