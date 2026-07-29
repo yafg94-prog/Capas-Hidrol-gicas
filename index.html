@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapaencas - Ubicación Exacta GPS</title>
+    <title>Mapaencas - GPS Satelital</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -17,14 +17,14 @@
             z-index: 1000;
             background: #ffffff;
             border: 2px solid rgba(0,0,0,0.2);
-            padding: 8px 14px;
-            border-radius: 5px;
+            padding: 10px 16px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             font-family: sans-serif;
             font-size: 13px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .btn-ubicacion:disabled {
             background: #fff3cd;
@@ -36,10 +36,12 @@
 </head>
 <body>
 
-<button id="btnGPS" class="btn-ubicacion" onclick="obtenerUbicacionExacta()">📍 Obtener Ubicación Exacta</button>
+<button id="btnGPS" class="btn-ubicacion" onclick="obtenerUbicacionNativa()">📍 Obtener Ubicación Exacta</button>
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Turf.js para cruce espacial -->
 <script src="https://unpkg.com/@turf/turf@6/turf.min.min.js"></script>
 
 <script>
@@ -50,7 +52,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas a la izquierda (bajo zoom + / -)
+// Control de capas a la izquierda (bajo los botones + y -)
 const controlCapas = L.control.layers({}, {}, { 
     collapsed: false, 
     position: 'topleft' 
@@ -117,45 +119,53 @@ Promise.all([
     }
 })
 .catch(error => {
-    alert(error.message);
-    console.error('Error al cargar capas:', error);
+    alert("Error cargando mapas: " + error.message);
 });
 
-// --- LÓGICA DE ALTA PRECISIÓN Y ESPERA EXTENDIDA ---
+// --- LÓGICA DE GEOLOCALIZACIÓN DIRECTA (SISTEMA OPERATIVO) ---
 
-function obtenerUbicacionExacta() {
+function obtenerUbicacionNativa() {
     const btn = document.getElementById('btnGPS');
-    btn.innerText = '⏳ Conectando con satélites GPS...';
+    
+    if (!navigator.geolocation) {
+        alert("Tu navegador no admite geolocalización.");
+        return;
+    }
+
+    btn.innerText = '⏳ Leyendo satélites...';
     btn.disabled = true;
 
-    // Forzamos el uso exclusivo de hardware GPS con un timeout extenso de 25 segundos
-    map.locate({
-        setView: false,
-        maxZoom: 18,
-        enableHighAccuracy: true,  // Forzar GPS de precisión por hardware
-        timeout: 25000,             // 25 segundos para fijar satélites en terreno
-        maximumAge: 0               // Cero lecturas guardadas previa
-    });
+    const opcionesGPS = {
+        enableHighAccuracy: true, // Solicita máxima precisión (GNSS/GPS)
+        timeout: 15000,            // 15 segundos máximo
+        maximumAge: 3000           // Acepta datos del sensor de hasta 3 segundos atrás
+    };
+
+    // Uso directo de la API del navegador
+    navigator.geolocation.getCurrentPosition(
+        exitoUbicacion,
+        errorUbicacion,
+        opcionesGPS
+    );
 }
 
-// Evento cuando se obtiene la posición exitosamente
-map.on('locationfound', function(e) {
+function exitoUbicacion(posicion) {
     restablecerBoton();
 
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-    const precisionMetros = e.accuracy;
+    const lat = posicion.coords.latitude;
+    const lng = posicion.coords.longitude;
+    const precisionMetros = posicion.coords.accuracy;
 
     const latLng = [lat, lng];
     const puntoUsuario = turf.point([lng, lat]);
 
     let reporteMetadata = `<b>📍 Posición GPS Exacta:</b><br>`;
     reporteMetadata += `<b>Lat:</b> ${lat.toFixed(6)}, <b>Lng:</b> ${lng.toFixed(6)}<br>`;
-    reporteMetadata += `<small><b>Precisión obtenida:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
+    reporteMetadata += `<small><b>Precisión:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
 
     let halladoEnAlgunaCapa = false;
 
-    // Cruce espacial con Turf.js
+    // Consulta espacial con Turf.js
     capasCargadas.forEach(item => {
         item.geojson.features.forEach(feature => {
             if (turf.booleanPointInPolygon(puntoUsuario, feature)) {
@@ -173,11 +183,11 @@ map.on('locationfound', function(e) {
         reporteMetadata += `<i>No te encuentras dentro de ningún polígono de las capas cargadas.</i>`;
     }
 
-    // Limpieza de marcadores previos
+    // Limpieza de marcadores anteriores
     if (puntoRojoUbicacion) map.removeLayer(puntoRojoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
 
-    // Círculo translúcido de precisión
+    // Círculo del margen de error
     circuloPrecision = L.circle(latLng, {
         radius: precisionMetros,
         color: '#ff0000',
@@ -197,16 +207,32 @@ map.on('locationfound', function(e) {
     .addTo(map)
     .bindPopup(reporteMetadata);
 
-    // Animación fluida hacia el punto exacto con zoom alto (nivel 18)
-    map.flyTo(latLng, 18);
-    puntoRojoUbicacion.openPopup();
-});
+    // Encuadre y Zoom a nivel de calle (Zoom 18)
+    map.flyTo(latLng, 18, { animate: true, duration: 1.5 });
+    
+    setTimeout(() => {
+        puntoRojoUbicacion.openPopup();
+    }, 1200);
+}
 
-// En caso de que se agoten los 25 segundos o haya un error
-map.on('locationerror', function(e) {
+function errorUbicacion(error) {
     restablecerBoton();
-    alert("No se pudo obtener señal satelital precisa.\n\nConsejo: Si estás bajo un techo o dentro de un vehículo, acércate a una ventana o sal al exterior para que el chip GPS capture la señal de los satélites.");
-});
+    let detalle = "";
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            detalle = "El navegador tiene bloqueado el permiso de ubicación.";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            detalle = "La posición GPS no está disponible en este momento.";
+            break;
+        case error.TIMEOUT:
+            detalle = "El sensor GPS tardó demasiado en responder.";
+            break;
+        default:
+            detalle = error.message;
+    }
+    alert("Atención: " + detalle);
+}
 
 function restablecerBoton() {
     const btn = document.getElementById('btnGPS');
