@@ -32,17 +32,22 @@
             border-color: #ffeeba;
             cursor: wait;
         }
+        /* Estilo para el pin rojo personalizado */
+        .pin-marcador {
+            background: none;
+            border: none;
+        }
     </style>
 </head>
 <body>
 
-<button id="btnGPS" class="btn-ubicacion" onclick="obtenerUbicacionNativa()">📍 Obtener Ubicación Exacta</button>
+<button id="btnGPS" class="btn-ubicacion" onclick="iniciarBusquedaGPS()">📍 Obtener Ubicación Exacta</button>
 <div id="map"></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Turf.js para cruce espacial -->
-<script src="https://unpkg.com/@turf/turf@6/turf.min.min.js"></script>
+<!-- Turf.js para cruce espacial (URL corregida) -->
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
 const map = L.map('map').setView([-33.45, -70.66], 10);
@@ -52,7 +57,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas a la izquierda (bajo los botones + y -)
+// Control de capas a la izquierda
 const controlCapas = L.control.layers({}, {}, { 
     collapsed: false, 
     position: 'topleft' 
@@ -61,8 +66,21 @@ const controlCapas = L.control.layers({}, {}, {
 const grupoGeneral = L.featureGroup();
 const capasCargadas = []; 
 
-let puntoRojoUbicacion = null;
+let puntoUbicacion = null;   // marcador tipo pin
 let circuloPrecision = null;
+let watcherID = null;        // ID del watchPosition
+
+// Icono tipo "pin" rojo
+const pinIcon = L.divIcon({
+    className: 'pin-marcador',
+    html: '<svg width="32" height="44" viewBox="0 0 32 44" xmlns="http://www.w3.org/2000/svg">' +
+          '<path d="M16 0C7.164 0 0 7.164 0 16c0 12 16 28 16 28s16-16 16-28C32 7.164 24.836 0 16 0z" fill="#e63946" stroke="#fff" stroke-width="2.5"/>' +
+          '<circle cx="16" cy="16" r="6" fill="#fff"/>' +
+          '</svg>',
+    iconSize: [32, 44],
+    iconAnchor: [16, 44],   // punta del pin abajo
+    popupAnchor: [0, -44]
+});
 
 function crearPopup(feature) {
     let html = '';
@@ -75,9 +93,7 @@ function crearPopup(feature) {
 function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
     return fetch(url)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`No se pudo cargar "${url}" (Estado: ${response.status})`);
-            }
+            if (!response.ok) throw new Error(`No se pudo cargar "${url}" (Estado: ${response.status})`);
             return response.json();
         })
         .then(data => {
@@ -90,10 +106,9 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(crearPopup(feature));
                     if (mostrarEtiqueta && feature.properties && feature.properties.NOM_SSUBC) {
-                        layer.bindTooltip(
-                            feature.properties.NOM_SSUBC,
-                            { permanent: true, direction: 'center' }
-                        );
+                        layer.bindTooltip(feature.properties.NOM_SSUBC, {
+                            permanent: true, direction: 'center'
+                        });
                     }
                 }
             });
@@ -101,13 +116,12 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
             controlCapas.addOverlay(capa, nombre);
             capa.addTo(map);
             grupoGeneral.addLayer(capa);
-
             capasCargadas.push({ nombre: nombre, geojson: data });
             return capa;
         });
 }
 
-// Carga de capas
+// Carga de capas (tus archivos GeoJSON)
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
@@ -122,9 +136,9 @@ Promise.all([
     alert("Error cargando mapas: " + error.message);
 });
 
-// --- LÓGICA DE GEOLOCALIZACIÓN DIRECTA (SISTEMA OPERATIVO) ---
+// ------------- LÓGICA DE GEOLOCALIZACIÓN MEJORADA -------------
 
-function obtenerUbicacionNativa() {
+function iniciarBusquedaGPS() {
     const btn = document.getElementById('btnGPS');
     
     if (!navigator.geolocation) {
@@ -132,106 +146,154 @@ function obtenerUbicacionNativa() {
         return;
     }
 
-    btn.innerText = '⏳ Leyendo satélites...';
+    // Detener cualquier watcher previo
+    if (watcherID !== null) {
+        navigator.geolocation.clearWatch(watcherID);
+        watcherID = null;
+    }
+
+    btn.innerText = '⏳ Buscando satélites...';
     btn.disabled = true;
 
     const opcionesGPS = {
-        enableHighAccuracy: true, // Solicita máxima precisión (GNSS/GPS)
-        timeout: 15000,            // 15 segundos máximo
-        maximumAge: 3000           // Acepta datos del sensor de hasta 3 segundos atrás
+        enableHighAccuracy: true,
+        timeout: 20000,        // 20 segundos máximo para la primera lectura
+        maximumAge: 0          // Forzar lectura fresca
     };
 
-    // Uso directo de la API del navegador
+    // Intentar una primera lectura rápida
     navigator.geolocation.getCurrentPosition(
-        exitoUbicacion,
-        errorUbicacion,
+        (pos) => {
+            // Ya tenemos una primera posición, la mostramos y luego afinamos con watch
+            actualizarMarcador(pos);
+            // Iniciar watcher para mejorar precisión si es necesario
+            iniciarWatcher();
+        },
+        (err) => {
+            // Si falla el primer intento, mostramos error y damos opción de reintentar
+            restablecerBoton();
+            manejarErrorUbicacion(err);
+        },
         opcionesGPS
     );
 }
 
-function exitoUbicacion(posicion) {
-    restablecerBoton();
+function iniciarWatcher() {
+    // Si ya teníamos un watcher, lo detenemos
+    if (watcherID !== null) {
+        navigator.geolocation.clearWatch(watcherID);
+    }
 
+    let intentos = 0;
+    const maxIntentos = 60;   // ~30 segundos (cada callback ~500ms)
+    const precisionDeseada = 10; // metros
+
+    watcherID = navigator.geolocation.watchPosition(
+        (pos) => {
+            intentos++;
+            const precision = pos.coords.accuracy;
+            actualizarMarcador(pos);
+
+            // Si alcanzamos la precisión deseada o se agotaron intentos, paramos
+            if (precision <= precisionDeseada || intentos >= maxIntentos) {
+                navigator.geolocation.clearWatch(watcherID);
+                watcherID = null;
+                restablecerBoton();
+                // Abrir popup automáticamente
+                if (puntoUbicacion) {
+                    setTimeout(() => puntoUbicacion.openPopup(), 800);
+                }
+            }
+        },
+        (err) => {
+            // Error durante el watcher; no detenemos el botón, pero informamos
+            console.warn('Error en watchPosition:', err.message);
+            // Si falla irremediablemente, limpiamos
+            if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+                navigator.geolocation.clearWatch(watcherID);
+                watcherID = null;
+                restablecerBoton();
+                alert('No se pudo mantener la señal GPS. Intenta de nuevo en un lugar abierto.');
+            }
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+}
+
+function actualizarMarcador(posicion) {
     const lat = posicion.coords.latitude;
     const lng = posicion.coords.longitude;
     const precisionMetros = posicion.coords.accuracy;
-
     const latLng = [lat, lng];
-    const puntoUsuario = turf.point([lng, lat]);
 
-    let reporteMetadata = `<b>📍 Posición GPS Exacta:</b><br>`;
-    reporteMetadata += `<b>Lat:</b> ${lat.toFixed(6)}, <b>Lng:</b> ${lng.toFixed(6)}<br>`;
-    reporteMetadata += `<small><b>Precisión:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
-
-    let halladoEnAlgunaCapa = false;
-
-    // Consulta espacial con Turf.js
-    capasCargadas.forEach(item => {
-        item.geojson.features.forEach(feature => {
-            if (turf.booleanPointInPolygon(puntoUsuario, feature)) {
-                halladoEnAlgunaCapa = true;
-                reporteMetadata += `<b>Capa: ${item.nombre}</b><br>`;
-                for (let propiedad in feature.properties) {
-                    reporteMetadata += `• <b>${propiedad}:</b> ${feature.properties[propiedad]}<br>`;
-                }
-                reporteMetadata += `<br>`;
-            }
-        });
-    });
-
-    if (!halladoEnAlgunaCapa) {
-        reporteMetadata += `<i>No te encuentras dentro de ningún polígono de las capas cargadas.</i>`;
-    }
-
-    // Limpieza de marcadores anteriores
-    if (puntoRojoUbicacion) map.removeLayer(puntoRojoUbicacion);
+    // Limpiar marcadores anteriores
+    if (puntoUbicacion) map.removeLayer(puntoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
 
     // Círculo del margen de error
     circuloPrecision = L.circle(latLng, {
         radius: precisionMetros,
-        color: '#ff0000',
-        fillColor: '#ff0000',
+        color: '#e63946',
+        fillColor: '#e63946',
         fillOpacity: 0.15,
         stroke: false
     }).addTo(map);
 
-    // Punto rojo de ubicación
-    puntoRojoUbicacion = L.circleMarker(latLng, {
-        radius: 9,
-        color: '#ffffff',
-        weight: 3,
-        fillColor: '#ff0000',
-        fillOpacity: 1.0
-    })
-    .addTo(map)
-    .bindPopup(reporteMetadata);
+    // Punto tipo PIN rojo
+    puntoUbicacion = L.marker(latLng, { icon: pinIcon }).addTo(map);
 
-    // Encuadre y Zoom a nivel de calle (Zoom 18)
-    map.flyTo(latLng, 18, { animate: true, duration: 1.5 });
-    
-    setTimeout(() => {
-        puntoRojoUbicacion.openPopup();
-    }, 1200);
+    // Construir popup con información espacial
+    const puntoTurf = turf.point([lng, lat]);
+    let contenidoPopup = `<b>📍 Tu ubicación</b><br>
+                          Lat: ${lat.toFixed(6)} Lng: ${lng.toFixed(6)}<br>
+                          Precisión: ~${Math.round(precisionMetros)} m<hr>`;
+
+    let encontrado = false;
+    capasCargadas.forEach(item => {
+        item.geojson.features.forEach(feature => {
+            if (turf.booleanPointInPolygon(puntoTurf, feature)) {
+                encontrado = true;
+                contenidoPopup += `<b>Capa: ${item.nombre}</b><br>`;
+                for (let prop in feature.properties) {
+                    contenidoPopup += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                }
+                contenidoPopup += `<br>`;
+            }
+        });
+    });
+
+    if (!encontrado) {
+        contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
+    }
+
+    puntoUbicacion.bindPopup(contenidoPopup);
+
+    // Encuadre suave (solo en la primera actualización o cuando el usuario no esté interactuando)
+    if (!map._isMoving) {
+        map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
+    }
 }
 
-function errorUbicacion(error) {
-    restablecerBoton();
-    let detalle = "";
+function manejarErrorUbicacion(error) {
+    let mensaje = '';
     switch(error.code) {
         case error.PERMISSION_DENIED:
-            detalle = "El navegador tiene bloqueado el permiso de ubicación.";
+            mensaje = 'Permiso de ubicación denegado. Por favor actívalo en la configuración del navegador.';
             break;
         case error.POSITION_UNAVAILABLE:
-            detalle = "La posición GPS no está disponible en este momento.";
+            mensaje = 'Señal GPS no disponible. Intenta en un lugar con vista al cielo.';
             break;
         case error.TIMEOUT:
-            detalle = "El sensor GPS tardó demasiado en responder.";
+            mensaje = 'El GPS tardó demasiado. ¿Estás en interiores?';
             break;
         default:
-            detalle = error.message;
+            mensaje = error.message;
     }
-    alert("Atención: " + detalle);
+    alert('Error de geolocalización: ' + mensaje);
 }
 
 function restablecerBoton() {
