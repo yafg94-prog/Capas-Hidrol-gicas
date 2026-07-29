@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapaencas - Ubicación en Vivo</title>
+    <title>Mapaencas - Ubicación Exacta GPS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -24,15 +24,19 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             font-family: sans-serif;
             font-size: 13px;
+            transition: all 0.3s ease;
         }
-        .btn-ubicacion:hover {
-            background: #f4f4f4;
+        .btn-ubicacion:disabled {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeeba;
+            cursor: wait;
         }
     </style>
 </head>
 <body>
 
-<button id="btnGPS" class="btn-ubicacion" onclick="obtenerUbicacionRobusta()">📍 Obtener Ubicación</button>
+<button id="btnGPS" class="btn-ubicacion" onclick="obtenerUbicacionExacta()">📍 Obtener Ubicación Exacta</button>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -46,7 +50,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas a la izquierda (debajo del zoom + / -)
+// Control de capas a la izquierda (bajo zoom + / -)
 const controlCapas = L.control.layers({}, {}, { 
     collapsed: false, 
     position: 'topleft' 
@@ -117,23 +121,24 @@ Promise.all([
     console.error('Error al cargar capas:', error);
 });
 
-// --- LÓGICA DE GEOLOCALIZACIÓN DIRECTA ---
+// --- LÓGICA DE ALTA PRECISIÓN Y ESPERA EXTENDIDA ---
 
-function obtenerUbicacionRobusta() {
+function obtenerUbicacionExacta() {
     const btn = document.getElementById('btnGPS');
-    btn.innerText = '⏳ Buscando GPS...';
+    btn.innerText = '⏳ Conectando con satélites GPS...';
     btn.disabled = true;
 
-    // Primer intento con alta precisión
+    // Forzamos el uso exclusivo de hardware GPS con un timeout extenso de 25 segundos
     map.locate({
         setView: false,
         maxZoom: 18,
-        enableHighAccuracy: true,
-        timeout: 7000 // 7 segundos máx para no congelar la app
+        enableHighAccuracy: true,  // Forzar GPS de precisión por hardware
+        timeout: 25000,             // 25 segundos para fijar satélites en terreno
+        maximumAge: 0               // Cero lecturas guardadas previa
     });
 }
 
-// Evento cuando se encuentra la posición exitosamente
+// Evento cuando se obtiene la posición exitosamente
 map.on('locationfound', function(e) {
     restablecerBoton();
 
@@ -144,9 +149,9 @@ map.on('locationfound', function(e) {
     const latLng = [lat, lng];
     const puntoUsuario = turf.point([lng, lat]);
 
-    let reporteMetadata = `<b>📍 Tu Posición:</b><br>`;
+    let reporteMetadata = `<b>📍 Posición GPS Exacta:</b><br>`;
     reporteMetadata += `<b>Lat:</b> ${lat.toFixed(6)}, <b>Lng:</b> ${lng.toFixed(6)}<br>`;
-    reporteMetadata += `<small><b>Margen de error:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
+    reporteMetadata += `<small><b>Precisión obtenida:</b> ~${Math.round(precisionMetros)} metros</small><hr>`;
 
     let halladoEnAlgunaCapa = false;
 
@@ -172,7 +177,7 @@ map.on('locationfound', function(e) {
     if (puntoRojoUbicacion) map.removeLayer(puntoRojoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
 
-    // Círculo de margen de error
+    // Círculo translúcido de precisión
     circuloPrecision = L.circle(latLng, {
         radius: precisionMetros,
         color: '#ff0000',
@@ -192,29 +197,20 @@ map.on('locationfound', function(e) {
     .addTo(map)
     .bindPopup(reporteMetadata);
 
-    // Centrar mapa con animación
-    map.flyTo(latLng, 17);
+    // Animación fluida hacia el punto exacto con zoom alto (nivel 18)
+    map.flyTo(latLng, 18);
     puntoRojoUbicacion.openPopup();
 });
 
-// En caso de error o tiempo de espera agotado
+// En caso de que se agoten los 25 segundos o haya un error
 map.on('locationerror', function(e) {
     restablecerBoton();
-    
-    // Si falla por alta precisión (Timeout), intentamos una lectura rápida por red/Wi-Fi
-    console.warn("Fallo GPS de alta precisión, intentando respaldo:", e.message);
-    
-    map.locate({
-        setView: true,
-        maxZoom: 16,
-        enableHighAccuracy: false,
-        timeout: 5000
-    });
+    alert("No se pudo obtener señal satelital precisa.\n\nConsejo: Si estás bajo un techo o dentro de un vehículo, acércate a una ventana o sal al exterior para que el chip GPS capture la señal de los satélites.");
 });
 
 function restablecerBoton() {
     const btn = document.getElementById('btnGPS');
-    btn.innerText = '📍 Obtener Ubicación';
+    btn.innerText = '📍 Obtener Ubicación Exacta';
     btn.disabled = false;
 }
 </script>
