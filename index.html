@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mapaencas - GPS Satelital</title>
+    <title>Mapaencas - GPS Satelital + Buffer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
@@ -10,10 +10,8 @@
             width: 100%;
             margin: 0;
         }
-        .btn-ubicacion {
+        .btn-ubicacion, .btn-buffer {
             position: absolute;
-            top: 15px;
-            right: 15px;
             z-index: 1000;
             background: #ffffff;
             border: 2px solid rgba(0,0,0,0.2);
@@ -26,13 +24,20 @@
             font-size: 13px;
             transition: all 0.2s ease;
         }
-        .btn-ubicacion:disabled {
+        .btn-ubicacion {
+            top: 15px;
+            right: 15px;
+        }
+        .btn-buffer {
+            top: 70px;
+            right: 15px;
+        }
+        .btn-ubicacion:disabled, .btn-buffer:disabled {
             background: #fff3cd;
             color: #856404;
             border-color: #ffeeba;
             cursor: wait;
         }
-        /* Estilo para el pin rojo personalizado */
         .pin-marcador {
             background: none;
             border: none;
@@ -42,11 +47,10 @@
 <body>
 
 <button id="btnGPS" class="btn-ubicacion" onclick="iniciarBusquedaGPS()">📍 Obtener Ubicación Exacta</button>
+<button id="btnBuffer" class="btn-buffer" onclick="analizarBuffer()" disabled>🔵 Buffer y Análisis</button>
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Turf.js para cruce espacial (URL corregida) -->
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
@@ -57,20 +61,16 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas a la izquierda
-const controlCapas = L.control.layers({}, {}, { 
-    collapsed: false, 
-    position: 'topleft' 
-}).addTo(map);
-
+const controlCapas = L.control.layers({}, {}, { collapsed: false, position: 'topleft' }).addTo(map);
 const grupoGeneral = L.featureGroup();
 const capasCargadas = []; 
 
-let puntoUbicacion = null;   // marcador tipo pin
+let puntoUbicacion = null;
 let circuloPrecision = null;
-let watcherID = null;        // ID del watchPosition
+let watcherID = null;
+let bufferCircle = null;
+let bufferPopupMarker = null;
 
-// Icono tipo "pin" rojo
 const pinIcon = L.divIcon({
     className: 'pin-marcador',
     html: '<svg width="32" height="44" viewBox="0 0 32 44" xmlns="http://www.w3.org/2000/svg">' +
@@ -78,10 +78,11 @@ const pinIcon = L.divIcon({
           '<circle cx="16" cy="16" r="6" fill="#fff"/>' +
           '</svg>',
     iconSize: [32, 44],
-    iconAnchor: [16, 44],   // punta del pin abajo
+    iconAnchor: [16, 44],
     popupAnchor: [0, -44]
 });
 
+// ---------- CARGA DE CAPAS ----------
 function crearPopup(feature) {
     let html = '';
     for (let campo in feature.properties) {
@@ -98,21 +99,15 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
         })
         .then(data => {
             const capa = L.geoJSON(data, {
-                style: {
-                    color: color,
-                    weight: 2,
-                    fillOpacity: 0.5
-                },
+                style: { color: color, weight: 2, fillOpacity: 0.5 },
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(crearPopup(feature));
+                    // Solo mostramos etiqueta si mostrarEtiqueta es true
                     if (mostrarEtiqueta && feature.properties && feature.properties.NOM_SSUBC) {
-                        layer.bindTooltip(feature.properties.NOM_SSUBC, {
-                            permanent: true, direction: 'center'
-                        });
+                        layer.bindTooltip(feature.properties.NOM_SSUBC, { permanent: true, direction: 'center' });
                     }
                 }
             });
-
             controlCapas.addOverlay(capa, nombre);
             capa.addTo(map);
             grupoGeneral.addLayer(capa);
@@ -121,57 +116,44 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas (tus archivos GeoJSON)
+// Carga de capas (añadida Redhidro, subcuencas SIN etiquetas)
 Promise.all([
-    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', true),
+    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', false), // etiquetas ocultas
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
-    crearCapa('./Restriccion.geojson', 'green', 'Restricciones')
+    crearCapa('./Restriccion.geojson', 'green', 'Restricciones'),
+    crearCapa('./Redhidro.geojson', '#00bcd4', 'Red Hidrográfica') // nueva capa
 ])
 .then(() => {
     if (grupoGeneral.getLayers().length > 0) {
         map.fitBounds(grupoGeneral.getBounds());
     }
 })
-.catch(error => {
-    alert("Error cargando mapas: " + error.message);
-});
+.catch(error => alert("Error cargando mapas: " + error.message));
 
-// ------------- LÓGICA DE GEOLOCALIZACIÓN MEJORADA -------------
-
+// ---------- GPS (sin cambios) ----------
 function iniciarBusquedaGPS() {
-    const btn = document.getElementById('btnGPS');
-    
+    const btnGPS = document.getElementById('btnGPS');
+    const btnBuffer = document.getElementById('btnBuffer');
     if (!navigator.geolocation) {
         alert("Tu navegador no admite geolocalización.");
         return;
     }
-
-    // Detener cualquier watcher previo
     if (watcherID !== null) {
         navigator.geolocation.clearWatch(watcherID);
         watcherID = null;
     }
+    btnGPS.innerText = '⏳ Buscando satélites...';
+    btnGPS.disabled = true;
+    btnBuffer.disabled = true;
 
-    btn.innerText = '⏳ Buscando satélites...';
-    btn.disabled = true;
-
-    const opcionesGPS = {
-        enableHighAccuracy: true,
-        timeout: 20000,        // 20 segundos máximo para la primera lectura
-        maximumAge: 0          // Forzar lectura fresca
-    };
-
-    // Intentar una primera lectura rápida
+    const opcionesGPS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
     navigator.geolocation.getCurrentPosition(
         (pos) => {
-            // Ya tenemos una primera posición, la mostramos y luego afinamos con watch
             actualizarMarcador(pos);
-            // Iniciar watcher para mejorar precisión si es necesario
             iniciarWatcher();
         },
         (err) => {
-            // Si falla el primer intento, mostramos error y damos opción de reintentar
-            restablecerBoton();
+            restablecerBotonGPS();
             manejarErrorUbicacion(err);
         },
         opcionesGPS
@@ -179,48 +161,32 @@ function iniciarBusquedaGPS() {
 }
 
 function iniciarWatcher() {
-    // Si ya teníamos un watcher, lo detenemos
-    if (watcherID !== null) {
-        navigator.geolocation.clearWatch(watcherID);
-    }
-
+    if (watcherID !== null) navigator.geolocation.clearWatch(watcherID);
     let intentos = 0;
-    const maxIntentos = 60;   // ~30 segundos (cada callback ~500ms)
-    const precisionDeseada = 10; // metros
-
+    const maxIntentos = 60;
+    const precisionDeseada = 10;
     watcherID = navigator.geolocation.watchPosition(
         (pos) => {
             intentos++;
-            const precision = pos.coords.accuracy;
             actualizarMarcador(pos);
-
-            // Si alcanzamos la precisión deseada o se agotaron intentos, paramos
-            if (precision <= precisionDeseada || intentos >= maxIntentos) {
+            if (pos.coords.accuracy <= precisionDeseada || intentos >= maxIntentos) {
                 navigator.geolocation.clearWatch(watcherID);
                 watcherID = null;
-                restablecerBoton();
-                // Abrir popup automáticamente
-                if (puntoUbicacion) {
-                    setTimeout(() => puntoUbicacion.openPopup(), 800);
-                }
+                restablecerBotonGPS();
+                document.getElementById('btnBuffer').disabled = false;
+                if (puntoUbicacion) setTimeout(() => puntoUbicacion.openPopup(), 800);
             }
         },
         (err) => {
-            // Error durante el watcher; no detenemos el botón, pero informamos
             console.warn('Error en watchPosition:', err.message);
-            // Si falla irremediablemente, limpiamos
             if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
                 navigator.geolocation.clearWatch(watcherID);
                 watcherID = null;
-                restablecerBoton();
-                alert('No se pudo mantener la señal GPS. Intenta de nuevo en un lugar abierto.');
+                restablecerBotonGPS();
+                alert('No se pudo mantener la señal GPS. Intenta en un lugar abierto.');
             }
         },
-        {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 }
     );
 }
 
@@ -230,11 +196,9 @@ function actualizarMarcador(posicion) {
     const precisionMetros = posicion.coords.accuracy;
     const latLng = [lat, lng];
 
-    // Limpiar marcadores anteriores
     if (puntoUbicacion) map.removeLayer(puntoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
 
-    // Círculo del margen de error
     circuloPrecision = L.circle(latLng, {
         radius: precisionMetros,
         color: '#e63946',
@@ -243,15 +207,12 @@ function actualizarMarcador(posicion) {
         stroke: false
     }).addTo(map);
 
-    // Punto tipo PIN rojo
     puntoUbicacion = L.marker(latLng, { icon: pinIcon }).addTo(map);
 
-    // Construir popup con información espacial
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
                           Lat: ${lat.toFixed(6)} Lng: ${lng.toFixed(6)}<br>
                           Precisión: ~${Math.round(precisionMetros)} m<hr>`;
-
     let encontrado = false;
     capasCargadas.forEach(item => {
         item.geojson.features.forEach(feature => {
@@ -265,41 +226,131 @@ function actualizarMarcador(posicion) {
             }
         });
     });
-
-    if (!encontrado) {
-        contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
-    }
-
+    if (!encontrado) contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
     puntoUbicacion.bindPopup(contenidoPopup);
-
-    // Encuadre suave (solo en la primera actualización o cuando el usuario no esté interactuando)
-    if (!map._isMoving) {
-        map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
-    }
+    if (!map._isMoving) map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
 }
 
 function manejarErrorUbicacion(error) {
     let mensaje = '';
     switch(error.code) {
-        case error.PERMISSION_DENIED:
-            mensaje = 'Permiso de ubicación denegado. Por favor actívalo en la configuración del navegador.';
-            break;
-        case error.POSITION_UNAVAILABLE:
-            mensaje = 'Señal GPS no disponible. Intenta en un lugar con vista al cielo.';
-            break;
-        case error.TIMEOUT:
-            mensaje = 'El GPS tardó demasiado. ¿Estás en interiores?';
-            break;
-        default:
-            mensaje = error.message;
+        case error.PERMISSION_DENIED: mensaje = 'Permiso de ubicación denegado.'; break;
+        case error.POSITION_UNAVAILABLE: mensaje = 'Señal GPS no disponible.'; break;
+        case error.TIMEOUT: mensaje = 'El GPS tardó demasiado.'; break;
+        default: mensaje = error.message;
     }
     alert('Error de geolocalización: ' + mensaje);
 }
 
-function restablecerBoton() {
+function restablecerBotonGPS() {
     const btn = document.getElementById('btnGPS');
     btn.innerText = '📍 Obtener Ubicación Exacta';
     btn.disabled = false;
+}
+
+// ---------- BUFFER Y ANÁLISIS (sin cambios, incluye Redhidro automáticamente) ----------
+function analizarBuffer() {
+    if (!puntoUbicacion) {
+        alert('Primero debes obtener tu ubicación GPS.');
+        return;
+    }
+
+    const latLng = puntoUbicacion.getLatLng();
+    const lat = latLng.lat;
+    const lng = latLng.lng;
+    const puntoCentral = turf.point([lng, lat]);
+
+    const metros = prompt('Ingresa el radio del buffer en metros (ej: 200):', '200');
+    if (!metros || isNaN(metros) || metros <= 0) {
+        alert('Valor inválido. Debe ser un número positivo.');
+        return;
+    }
+    const radio = parseFloat(metros);
+
+    const btnBuffer = document.getElementById('btnBuffer');
+    btnBuffer.disabled = true;
+    btnBuffer.innerText = '⏳ Analizando...';
+
+    let bufferPolygon;
+    try {
+        bufferPolygon = turf.buffer(puntoCentral, radio, { units: 'meters' });
+    } catch (e) {
+        alert('Error al crear el buffer: ' + e.message);
+        btnBuffer.disabled = false;
+        btnBuffer.innerText = '🔵 Buffer y Análisis';
+        return;
+    }
+
+    if (bufferCircle) map.removeLayer(bufferCircle);
+    bufferCircle = L.circle([lat, lng], {
+        radius: radio,
+        color: '#1f77b4',
+        fillColor: '#1f77b4',
+        fillOpacity: 0.1,
+        weight: 2,
+        dashArray: '5, 5'
+    }).addTo(map);
+
+    let resultadoHTML = `<b>🔵 Buffer de ${radio} m</b><br>
+                         <small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
+    let totalFeaturesEnBuffer = 0;
+    const capasResultados = [];
+
+    capasCargadas.forEach(item => {
+        const featuresIntersect = [];
+        item.geojson.features.forEach(feature => {
+            if (turf.booleanIntersects(bufferPolygon, feature)) {
+                let distancia = null;
+                if (feature.geometry.type === 'Point') {
+                    distancia = turf.distance(puntoCentral, feature, { units: 'meters' });
+                }
+                featuresIntersect.push({ feature: feature, distancia: distancia });
+            }
+        });
+
+        if (featuresIntersect.length > 0) {
+            capasResultados.push({
+                nombre: item.nombre,
+                cantidad: featuresIntersect.length,
+                elementos: featuresIntersect
+            });
+            totalFeaturesEnBuffer += featuresIntersect.length;
+        }
+    });
+
+    if (capasResultados.length === 0) {
+        resultadoHTML += '<i>No se encontraron elementos dentro del buffer.</i>';
+    } else {
+        capasResultados.forEach(capaRes => {
+            resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad})</b><br>`;
+            capaRes.elementos.forEach((elem, idx) => {
+                const props = elem.feature.properties;
+                resultadoHTML += `<div style="margin-left:15px; font-size:12px;">`;
+                if (elem.distancia !== null) {
+                    resultadoHTML += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
+                }
+                for (let prop in props) {
+                    resultadoHTML += `• ${prop}: ${props[prop]}<br>`;
+                }
+                resultadoHTML += `</div>`;
+                if (idx < capaRes.elementos.length - 1) resultadoHTML += '<br>';
+            });
+            resultadoHTML += '<br>';
+        });
+        resultadoHTML += `<b>Total de elementos dentro del buffer: ${totalFeaturesEnBuffer}</b>`;
+    }
+
+    if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
+    bufferPopupMarker = L.marker([lat, lng], { 
+        icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
+    }).addTo(map);
+    bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 350, maxHeight: 400 });
+    bufferPopupMarker.openPopup();
+
+    map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
+
+    btnBuffer.disabled = false;
+    btnBuffer.innerText = '🔵 Buffer y Análisis';
 }
 </script>
 </body>
