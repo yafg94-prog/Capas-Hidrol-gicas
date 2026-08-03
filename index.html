@@ -36,7 +36,7 @@
             background: #fff3cd;
             color: #856404;
             border-color: #ffeeba;
-            cursor: wait;
+            cursor: not-allowed;
         }
         .pin-marcador {
             background: none;
@@ -47,7 +47,7 @@
 <body>
 
 <button id="btnGPS" class="btn-ubicacion" onclick="iniciarBusquedaGPS()">📍 Obtener Ubicación Exacta</button>
-<button id="btnBuffer" class="btn-buffer" onclick="analizarBuffer()" disabled>🔵 Buffer y Análisis</button>
+<button id="btnBuffer" class="btn-buffer" onclick="analizarBuffer()" disabled title="Primero obtén tu ubicación GPS">🔵 Buffer y Análisis</button>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -115,7 +115,6 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas (subcuencas sin etiquetas)
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', false),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
@@ -129,7 +128,7 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
-// ---------- GPS CORREGIDO ----------
+// ---------- GPS: VUELO INMEDIATO + WATCHER DE PRECISIÓN ----------
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
@@ -144,12 +143,15 @@ function iniciarBusquedaGPS() {
     btnGPS.innerText = '⏳ Buscando satélites...';
     btnGPS.disabled = true;
     btnBuffer.disabled = true;
+    btnBuffer.title = 'Primero obtén tu ubicación GPS';
 
     const opcionesGPS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             actualizarMarcador(pos);
-            iniciarWatcher();
+            // Vuelo inmediato a la primera posición obtenida
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 18, { animate: true, duration: 1.2 });
+            iniciarWatcher(); // luego afinamos con watcher
         },
         (err) => {
             restablecerBotonGPS();
@@ -167,12 +169,13 @@ function iniciarWatcher() {
     watcherID = navigator.geolocation.watchPosition(
         (pos) => {
             intentos++;
-            actualizarMarcador(pos, intentos === 1); // solo volar en la primera actualización
+            actualizarMarcador(pos, false); // sin volar, solo actualizar marcador
             if (pos.coords.accuracy <= precisionDeseada || intentos >= maxIntentos) {
                 navigator.geolocation.clearWatch(watcherID);
                 watcherID = null;
                 restablecerBotonGPS();
                 document.getElementById('btnBuffer').disabled = false;
+                document.getElementById('btnBuffer').title = '';
                 if (puntoUbicacion) setTimeout(() => puntoUbicacion.openPopup(), 800);
             }
         },
@@ -227,11 +230,7 @@ function actualizarMarcador(posicion, volar = false) {
     });
     if (!encontrado) contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
     puntoUbicacion.bindPopup(contenidoPopup);
-
-    // Vuelo al punto solo cuando se solicita explícitamente (primera actualización del watcher)
-    if (volar) {
-        map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
-    }
+    // Ya no se usa el parámetro volar, porque el vuelo se hace en iniciarBusquedaGPS
 }
 
 function manejarErrorUbicacion(error) {
@@ -251,14 +250,19 @@ function restablecerBotonGPS() {
     btn.disabled = false;
 }
 
-// ---------- BUFFER Y ANÁLISIS CORREGIDO ----------
+// ---------- BUFFER Y ANÁLISIS (FUNCIONAL) ----------
 function analizarBuffer() {
-    if (!puntoUbicacion) {
+    const btnBuffer = document.getElementById('btnBuffer');
+    // Verificación extra por si está deshabilitado
+    if (btnBuffer.disabled) {
         alert('Primero debes obtener tu ubicación GPS.');
         return;
     }
+    if (!puntoUbicacion) {
+        alert('No hay una ubicación GPS fijada. Obtén tu ubicación primero.');
+        return;
+    }
 
-    const btnBuffer = document.getElementById('btnBuffer');
     btnBuffer.disabled = true;
     btnBuffer.innerText = '⏳ Analizando...';
 
@@ -365,6 +369,7 @@ function restablecerBotonBuffer() {
     const btn = document.getElementById('btnBuffer');
     btn.innerText = '🔵 Buffer y Análisis';
     btn.disabled = false;
+    btn.title = '';
 }
 </script>
 </body>
