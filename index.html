@@ -82,6 +82,52 @@ const pinIcon = L.divIcon({
     popupAnchor: [0, -44]
 });
 
+// ---------- FUNCIÓN AUXILIAR PARA ANÁLISIS ESPACIAL SEGURO ----------
+function analizarRelacionEspacial(puntoUsuario, feature) {
+    try {
+        const tipo = feature.geometry.type;
+        
+        if (tipo === 'Polygon' || tipo === 'MultiPolygon') {
+            // Para polígonos: verificar si el punto está dentro
+            return {
+                tipo: 'poligono',
+                dentro: turf.booleanPointInPolygon(puntoUsuario, feature),
+                distancia: null
+            };
+        } else if (tipo === 'LineString' || tipo === 'MultiLineString') {
+            // Para líneas: calcular distancia al punto más cercano
+            const distancia = turf.pointToLineDistance(puntoUsuario, feature, { units: 'meters' });
+            return {
+                tipo: 'linea',
+                dentro: false,
+                distancia: distancia
+            };
+        } else if (tipo === 'Point') {
+            // Para puntos: calcular distancia directa
+            const distancia = turf.distance(puntoUsuario, feature, { units: 'meters' });
+            return {
+                tipo: 'punto',
+                dentro: false,
+                distancia: distancia
+            };
+        } else {
+            // Otros tipos de geometría (MultiPoint, etc.)
+            return {
+                tipo: 'desconocido',
+                dentro: false,
+                distancia: null
+            };
+        }
+    } catch (error) {
+        console.warn(`Error analizando geometría tipo ${feature.geometry.type}:`, error.message);
+        return {
+            tipo: 'error',
+            dentro: false,
+            distancia: null
+        };
+    }
+}
+
 // ---------- CARGA DE CAPAS ----------
 function crearPopup(feature) {
     let html = '';
@@ -128,7 +174,7 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
-// ---------- GPS: VUELO INMEDIATO + WATCHER DE PRECISIÓN ----------
+// ---------- GPS CORREGIDO CON VUELO ASEGURADO ----------
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
@@ -149,9 +195,12 @@ function iniciarBusquedaGPS() {
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             actualizarMarcador(pos);
-            // Vuelo inmediato a la primera posición obtenida
-            map.flyTo([pos.coords.latitude, pos.coords.longitude], 18, { animate: true, duration: 1.2 });
-            iniciarWatcher(); // luego afinamos con watcher
+            // VUELO INMEDIATO ASEGURADO
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 18, {
+                animate: true,
+                duration: 1.5
+            });
+            iniciarWatcher();
         },
         (err) => {
             restablecerBotonGPS();
@@ -166,17 +215,21 @@ function iniciarWatcher() {
     let intentos = 0;
     const maxIntentos = 60;
     const precisionDeseada = 10;
+    
     watcherID = navigator.geolocation.watchPosition(
         (pos) => {
             intentos++;
-            actualizarMarcador(pos, false); // sin volar, solo actualizar marcador
+            actualizarMarcador(pos, false);
             if (pos.coords.accuracy <= precisionDeseada || intentos >= maxIntentos) {
                 navigator.geolocation.clearWatch(watcherID);
                 watcherID = null;
                 restablecerBotonGPS();
-                document.getElementById('btnBuffer').disabled = false;
-                document.getElementById('btnBuffer').title = '';
-                if (puntoUbicacion) setTimeout(() => puntoUbicacion.openPopup(), 800);
+                const btnBuffer = document.getElementById('btnBuffer');
+                btnBuffer.disabled = false;
+                btnBuffer.title = '';
+                if (puntoUbicacion) {
+                    setTimeout(() => puntoUbicacion.openPopup(), 800);
+                }
             }
         },
         (err) => {
@@ -198,9 +251,11 @@ function actualizarMarcador(posicion, volar = false) {
     const precisionMetros = posicion.coords.accuracy;
     const latLng = [lat, lng];
 
+    // Limpiar marcadores anteriores
     if (puntoUbicacion) map.removeLayer(puntoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
 
+    // Círculo de precisión
     circuloPrecision = L.circle(latLng, {
         radius: precisionMetros,
         color: '#e63946',
@@ -209,37 +264,100 @@ function actualizarMarcador(posicion, volar = false) {
         stroke: false
     }).addTo(map);
 
+    // Marcador tipo pin
     puntoUbicacion = L.marker(latLng, { icon: pinIcon }).addTo(map);
 
+    // Construir popup con análisis espacial SEGURO
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
-                          Lat: ${lat.toFixed(6)} Lng: ${lng.toFixed(6)}<br>
-                          Precisión: ~${Math.round(precisionMetros)} m<hr>`;
-    let encontrado = false;
+                          <b>Lat:</b> ${lat.toFixed(6)} <b>Lng:</b> ${lng.toFixed(6)}<br>
+                          <b>Precisión:</b> ~${Math.round(precisionMetros)} m<hr>`;
+    
+    let encontradoAlgo = false;
+
+    // Analizar cada capa cargada
     capasCargadas.forEach(item => {
+        let capaInfo = '';
+        let contadorFeatures = 0;
+        
         item.geojson.features.forEach(feature => {
-            if (turf.booleanPointInPolygon(puntoTurf, feature)) {
-                encontrado = true;
-                contenidoPopup += `<b>Capa: ${item.nombre}</b><br>`;
-                for (let prop in feature.properties) {
-                    contenidoPopup += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+            const resultado = analizarRelacionEspacial(puntoTurf, feature);
+            
+            if (resultado.tipo === 'poligono' && resultado.dentro) {
+                // El punto está DENTRO de un polígono
+                if (contadorFeatures === 0) {
+                    capaInfo += `<b>📁 ${item.nombre}</b><br>`;
                 }
-                contenidoPopup += `<br>`;
+                capaInfo += `<div style="margin-left:15px; font-size:12px;">`;
+                capaInfo += `✅ Dentro del polígono<br>`;
+                for (let prop in feature.properties) {
+                    capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                }
+                capaInfo += `</div>`;
+                contadorFeatures++;
+                encontradoAlgo = true;
+                
+            } else if (resultado.tipo === 'linea' && resultado.distancia < 1000) {
+                // Línea cercana (a menos de 1 km)
+                if (contadorFeatures === 0) {
+                    capaInfo += `<b>📁 ${item.nombre}</b><br>`;
+                }
+                capaInfo += `<div style="margin-left:15px; font-size:12px;">`;
+                capaInfo += `📏 Línea a ${Math.round(resultado.distancia)} m<br>`;
+                for (let prop in feature.properties) {
+                    capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                }
+                capaInfo += `</div>`;
+                contadorFeatures++;
+                encontradoAlgo = true;
+                
+            } else if (resultado.tipo === 'punto' && resultado.distancia < 1000) {
+                // Punto cercano (a menos de 1 km)
+                if (contadorFeatures === 0) {
+                    capaInfo += `<b>📁 ${item.nombre}</b><br>`;
+                }
+                capaInfo += `<div style="margin-left:15px; font-size:12px;">`;
+                capaInfo += `📍 Punto a ${Math.round(resultado.distancia)} m<br>`;
+                for (let prop in feature.properties) {
+                    capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                }
+                capaInfo += `</div>`;
+                contadorFeatures++;
+                encontradoAlgo = true;
             }
         });
+        
+        if (capaInfo) {
+            contenidoPopup += capaInfo + '<br>';
+        }
     });
-    if (!encontrado) contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
-    puntoUbicacion.bindPopup(contenidoPopup);
-    // Ya no se usa el parámetro volar, porque el vuelo se hace en iniciarBusquedaGPS
+
+    if (!encontradoAlgo) {
+        contenidoPopup += '<i>No se encontraron elementos cercanos en las capas cargadas.</i>';
+    }
+
+    puntoUbicacion.bindPopup(contenidoPopup, { maxWidth: 350, maxHeight: 400 });
+    
+    // Si se solicita volar explícitamente
+    if (volar) {
+        map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
+    }
 }
 
 function manejarErrorUbicacion(error) {
     let mensaje = '';
     switch(error.code) {
-        case error.PERMISSION_DENIED: mensaje = 'Permiso de ubicación denegado.'; break;
-        case error.POSITION_UNAVAILABLE: mensaje = 'Señal GPS no disponible.'; break;
-        case error.TIMEOUT: mensaje = 'El GPS tardó demasiado.'; break;
-        default: mensaje = error.message;
+        case error.PERMISSION_DENIED: 
+            mensaje = 'Permiso de ubicación denegado. Por favor actívalo en la configuración del navegador.'; 
+            break;
+        case error.POSITION_UNAVAILABLE: 
+            mensaje = 'Señal GPS no disponible. Intenta en un lugar con vista al cielo.'; 
+            break;
+        case error.TIMEOUT: 
+            mensaje = 'El GPS tardó demasiado. ¿Estás en interiores?'; 
+            break;
+        default: 
+            mensaje = error.message;
     }
     alert('Error de geolocalización: ' + mensaje);
 }
@@ -253,7 +371,7 @@ function restablecerBotonGPS() {
 // ---------- BUFFER Y ANÁLISIS (FUNCIONAL) ----------
 function analizarBuffer() {
     const btnBuffer = document.getElementById('btnBuffer');
-    // Verificación extra por si está deshabilitado
+    
     if (btnBuffer.disabled) {
         alert('Primero debes obtener tu ubicación GPS.');
         return;
@@ -289,6 +407,7 @@ function analizarBuffer() {
             return;
         }
 
+        // Visualización del buffer
         if (bufferCircle) map.removeLayer(bufferCircle);
         bufferCircle = L.circle([lat, lng], {
             radius: radio,
@@ -299,6 +418,7 @@ function analizarBuffer() {
             dashArray: '5, 5'
         }).addTo(map);
 
+        // Análisis de intersección
         let resultadoHTML = `<b>🔵 Buffer de ${radio} m</b><br>
                              <small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
         let totalFeaturesEnBuffer = 0;
@@ -306,13 +426,23 @@ function analizarBuffer() {
 
         capasCargadas.forEach(item => {
             const featuresIntersect = [];
+            
             item.geojson.features.forEach(feature => {
-                if (turf.booleanIntersects(bufferPolygon, feature)) {
-                    let distancia = null;
-                    if (feature.geometry.type === 'Point') {
-                        distancia = turf.distance(puntoCentral, feature, { units: 'meters' });
+                try {
+                    if (turf.booleanIntersects(bufferPolygon, feature)) {
+                        let distancia = null;
+                        if (feature.geometry.type === 'Point') {
+                            distancia = turf.distance(puntoCentral, feature, { units: 'meters' });
+                        } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+                            distancia = turf.pointToLineDistance(puntoCentral, feature, { units: 'meters' });
+                        }
+                        featuresIntersect.push({ 
+                            feature: feature, 
+                            distancia: distancia 
+                        });
                     }
-                    featuresIntersect.push({ feature: feature, distancia: distancia });
+                } catch (error) {
+                    console.warn(`Error analizando feature en buffer:`, error.message);
                 }
             });
 
@@ -330,7 +460,7 @@ function analizarBuffer() {
             resultadoHTML += '<i>No se encontraron elementos dentro del buffer.</i>';
         } else {
             capasResultados.forEach(capaRes => {
-                resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad})</b><br>`;
+                resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
                 capaRes.elementos.forEach((elem, idx) => {
                     const props = elem.feature.properties;
                     resultadoHTML += `<div style="margin-left:15px; font-size:12px;">`;
@@ -338,27 +468,29 @@ function analizarBuffer() {
                         resultadoHTML += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
                     }
                     for (let prop in props) {
-                        resultadoHTML += `• ${prop}: ${props[prop]}<br>`;
+                        resultadoHTML += `• <b>${prop}:</b> ${props[prop]}<br>`;
                     }
                     resultadoHTML += `</div>`;
                     if (idx < capaRes.elementos.length - 1) resultadoHTML += '<br>';
                 });
                 resultadoHTML += '<br>';
             });
-            resultadoHTML += `<b>Total de elementos dentro del buffer: ${totalFeaturesEnBuffer}</b>`;
+            resultadoHTML += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
         }
 
+        // Mostrar resultado en popup
         if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
         bufferPopupMarker = L.marker([lat, lng], { 
             icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
         }).addTo(map);
-        bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 350, maxHeight: 400 });
+        bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 400, maxHeight: 500 });
         bufferPopupMarker.openPopup();
 
+        // Ajustar vista para ver el buffer completo
         map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
 
     } catch (error) {
-        console.error(error);
+        console.error('Error en análisis de buffer:', error);
         alert('Ocurrió un error durante el análisis: ' + error.message);
     } finally {
         restablecerBotonBuffer();
