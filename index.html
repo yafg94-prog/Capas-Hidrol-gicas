@@ -102,7 +102,6 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
                 style: { color: color, weight: 2, fillOpacity: 0.5 },
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(crearPopup(feature));
-                    // Solo mostramos etiqueta si mostrarEtiqueta es true
                     if (mostrarEtiqueta && feature.properties && feature.properties.NOM_SSUBC) {
                         layer.bindTooltip(feature.properties.NOM_SSUBC, { permanent: true, direction: 'center' });
                     }
@@ -116,12 +115,12 @@ function crearCapa(url, color, nombre, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas (añadida Redhidro, subcuencas SIN etiquetas)
+// Carga de capas (subcuencas sin etiquetas)
 Promise.all([
-    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', false), // etiquetas ocultas
+    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', false),
     crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia'),
     crearCapa('./Restriccion.geojson', 'green', 'Restricciones'),
-    crearCapa('./Redhidro.geojson', '#00bcd4', 'Red Hidrográfica') // nueva capa
+    crearCapa('./Redhidro.geojson', '#00bcd4', 'Red Hidrográfica')
 ])
 .then(() => {
     if (grupoGeneral.getLayers().length > 0) {
@@ -130,7 +129,7 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
-// ---------- GPS (sin cambios) ----------
+// ---------- GPS CORREGIDO ----------
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
@@ -168,7 +167,7 @@ function iniciarWatcher() {
     watcherID = navigator.geolocation.watchPosition(
         (pos) => {
             intentos++;
-            actualizarMarcador(pos);
+            actualizarMarcador(pos, intentos === 1); // solo volar en la primera actualización
             if (pos.coords.accuracy <= precisionDeseada || intentos >= maxIntentos) {
                 navigator.geolocation.clearWatch(watcherID);
                 watcherID = null;
@@ -190,7 +189,7 @@ function iniciarWatcher() {
     );
 }
 
-function actualizarMarcador(posicion) {
+function actualizarMarcador(posicion, volar = false) {
     const lat = posicion.coords.latitude;
     const lng = posicion.coords.longitude;
     const precisionMetros = posicion.coords.accuracy;
@@ -228,7 +227,11 @@ function actualizarMarcador(posicion) {
     });
     if (!encontrado) contenidoPopup += '<i>No estás dentro de ningún polígono cargado.</i>';
     puntoUbicacion.bindPopup(contenidoPopup);
-    if (!map._isMoving) map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
+
+    // Vuelo al punto solo cuando se solicita explícitamente (primera actualización del watcher)
+    if (volar) {
+        map.flyTo(latLng, 18, { animate: true, duration: 1.2 });
+    }
 }
 
 function manejarErrorUbicacion(error) {
@@ -248,109 +251,120 @@ function restablecerBotonGPS() {
     btn.disabled = false;
 }
 
-// ---------- BUFFER Y ANÁLISIS (sin cambios, incluye Redhidro automáticamente) ----------
+// ---------- BUFFER Y ANÁLISIS CORREGIDO ----------
 function analizarBuffer() {
     if (!puntoUbicacion) {
         alert('Primero debes obtener tu ubicación GPS.');
         return;
     }
 
-    const latLng = puntoUbicacion.getLatLng();
-    const lat = latLng.lat;
-    const lng = latLng.lng;
-    const puntoCentral = turf.point([lng, lat]);
-
-    const metros = prompt('Ingresa el radio del buffer en metros (ej: 200):', '200');
-    if (!metros || isNaN(metros) || metros <= 0) {
-        alert('Valor inválido. Debe ser un número positivo.');
-        return;
-    }
-    const radio = parseFloat(metros);
-
     const btnBuffer = document.getElementById('btnBuffer');
     btnBuffer.disabled = true;
     btnBuffer.innerText = '⏳ Analizando...';
 
-    let bufferPolygon;
     try {
-        bufferPolygon = turf.buffer(puntoCentral, radio, { units: 'meters' });
-    } catch (e) {
-        alert('Error al crear el buffer: ' + e.message);
-        btnBuffer.disabled = false;
-        btnBuffer.innerText = '🔵 Buffer y Análisis';
-        return;
-    }
+        const latLng = puntoUbicacion.getLatLng();
+        const lat = latLng.lat;
+        const lng = latLng.lng;
+        const puntoCentral = turf.point([lng, lat]);
 
-    if (bufferCircle) map.removeLayer(bufferCircle);
-    bufferCircle = L.circle([lat, lng], {
-        radius: radio,
-        color: '#1f77b4',
-        fillColor: '#1f77b4',
-        fillOpacity: 0.1,
-        weight: 2,
-        dashArray: '5, 5'
-    }).addTo(map);
+        const metros = prompt('Ingresa el radio del buffer en metros (ej: 200):', '200');
+        if (!metros || isNaN(metros) || metros <= 0) {
+            alert('Valor inválido. Debe ser un número positivo.');
+            restablecerBotonBuffer();
+            return;
+        }
+        const radio = parseFloat(metros);
 
-    let resultadoHTML = `<b>🔵 Buffer de ${radio} m</b><br>
-                         <small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
-    let totalFeaturesEnBuffer = 0;
-    const capasResultados = [];
+        let bufferPolygon;
+        try {
+            bufferPolygon = turf.buffer(puntoCentral, radio, { units: 'meters' });
+        } catch (e) {
+            alert('Error al crear el buffer: ' + e.message);
+            restablecerBotonBuffer();
+            return;
+        }
 
-    capasCargadas.forEach(item => {
-        const featuresIntersect = [];
-        item.geojson.features.forEach(feature => {
-            if (turf.booleanIntersects(bufferPolygon, feature)) {
-                let distancia = null;
-                if (feature.geometry.type === 'Point') {
-                    distancia = turf.distance(puntoCentral, feature, { units: 'meters' });
+        if (bufferCircle) map.removeLayer(bufferCircle);
+        bufferCircle = L.circle([lat, lng], {
+            radius: radio,
+            color: '#1f77b4',
+            fillColor: '#1f77b4',
+            fillOpacity: 0.1,
+            weight: 2,
+            dashArray: '5, 5'
+        }).addTo(map);
+
+        let resultadoHTML = `<b>🔵 Buffer de ${radio} m</b><br>
+                             <small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
+        let totalFeaturesEnBuffer = 0;
+        const capasResultados = [];
+
+        capasCargadas.forEach(item => {
+            const featuresIntersect = [];
+            item.geojson.features.forEach(feature => {
+                if (turf.booleanIntersects(bufferPolygon, feature)) {
+                    let distancia = null;
+                    if (feature.geometry.type === 'Point') {
+                        distancia = turf.distance(puntoCentral, feature, { units: 'meters' });
+                    }
+                    featuresIntersect.push({ feature: feature, distancia: distancia });
                 }
-                featuresIntersect.push({ feature: feature, distancia: distancia });
+            });
+
+            if (featuresIntersect.length > 0) {
+                capasResultados.push({
+                    nombre: item.nombre,
+                    cantidad: featuresIntersect.length,
+                    elementos: featuresIntersect
+                });
+                totalFeaturesEnBuffer += featuresIntersect.length;
             }
         });
 
-        if (featuresIntersect.length > 0) {
-            capasResultados.push({
-                nombre: item.nombre,
-                cantidad: featuresIntersect.length,
-                elementos: featuresIntersect
+        if (capasResultados.length === 0) {
+            resultadoHTML += '<i>No se encontraron elementos dentro del buffer.</i>';
+        } else {
+            capasResultados.forEach(capaRes => {
+                resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad})</b><br>`;
+                capaRes.elementos.forEach((elem, idx) => {
+                    const props = elem.feature.properties;
+                    resultadoHTML += `<div style="margin-left:15px; font-size:12px;">`;
+                    if (elem.distancia !== null) {
+                        resultadoHTML += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
+                    }
+                    for (let prop in props) {
+                        resultadoHTML += `• ${prop}: ${props[prop]}<br>`;
+                    }
+                    resultadoHTML += `</div>`;
+                    if (idx < capaRes.elementos.length - 1) resultadoHTML += '<br>';
+                });
+                resultadoHTML += '<br>';
             });
-            totalFeaturesEnBuffer += featuresIntersect.length;
+            resultadoHTML += `<b>Total de elementos dentro del buffer: ${totalFeaturesEnBuffer}</b>`;
         }
-    });
 
-    if (capasResultados.length === 0) {
-        resultadoHTML += '<i>No se encontraron elementos dentro del buffer.</i>';
-    } else {
-        capasResultados.forEach(capaRes => {
-            resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad})</b><br>`;
-            capaRes.elementos.forEach((elem, idx) => {
-                const props = elem.feature.properties;
-                resultadoHTML += `<div style="margin-left:15px; font-size:12px;">`;
-                if (elem.distancia !== null) {
-                    resultadoHTML += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
-                }
-                for (let prop in props) {
-                    resultadoHTML += `• ${prop}: ${props[prop]}<br>`;
-                }
-                resultadoHTML += `</div>`;
-                if (idx < capaRes.elementos.length - 1) resultadoHTML += '<br>';
-            });
-            resultadoHTML += '<br>';
-        });
-        resultadoHTML += `<b>Total de elementos dentro del buffer: ${totalFeaturesEnBuffer}</b>`;
+        if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
+        bufferPopupMarker = L.marker([lat, lng], { 
+            icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
+        }).addTo(map);
+        bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 350, maxHeight: 400 });
+        bufferPopupMarker.openPopup();
+
+        map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
+
+    } catch (error) {
+        console.error(error);
+        alert('Ocurrió un error durante el análisis: ' + error.message);
+    } finally {
+        restablecerBotonBuffer();
     }
+}
 
-    if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
-    bufferPopupMarker = L.marker([lat, lng], { 
-        icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
-    }).addTo(map);
-    bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 350, maxHeight: 400 });
-    bufferPopupMarker.openPopup();
-
-    map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
-
-    btnBuffer.disabled = false;
-    btnBuffer.innerText = '🔵 Buffer y Análisis';
+function restablecerBotonBuffer() {
+    const btn = document.getElementById('btnBuffer');
+    btn.innerText = '🔵 Buffer y Análisis';
+    btn.disabled = false;
 }
 </script>
 </body>
