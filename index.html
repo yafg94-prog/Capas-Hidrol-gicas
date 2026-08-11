@@ -19,7 +19,7 @@
             height: 100vh;
             width: 100vw;
         }
-        /* ---------- HEADER (BARRA SUPERIOR) ---------- */
+        /* ---------- HEADER ---------- */
         #header {
             position: absolute;
             top: 0;
@@ -91,77 +91,162 @@
             background: #2ecc71;
             box-shadow: 0 0 8px #2ecc71;
         }
-        /* ---------- PANEL DE INFORMACIÓN (FLOTANTE) ---------- */
+        /* ---------- PANEL DE INFORMACIÓN ---------- */
         #info-panel {
             position: absolute;
             bottom: 100px;
             left: 20px;
-            width: 320px;
+            width: 360px;
             max-width: calc(100% - 40px);
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(6px);
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(8px);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.20);
             padding: 18px 20px;
             z-index: 1500;
-            border: 1px solid rgba(255,255,255,0.4);
-            transition: all 0.3s ease;
-            max-height: 50vh;
+            border: 1px solid rgba(255,255,255,0.3);
+            max-height: 55vh;
             overflow-y: auto;
-            pointer-events: none; /* para no interferir con el mapa */
+            pointer-events: none;
+            transition: all 0.3s ease;
         }
         #info-panel.active {
             pointer-events: auto;
         }
-        #info-panel .panel-title {
-            font-weight: 600;
-            color: #1a3c2e;
+        #info-panel .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             border-bottom: 2px solid #2d5a3f;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+        #info-panel .panel-title {
+            font-weight: 700;
+            color: #1a3c2e;
+            font-size: 16px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        #info-panel .panel-title span {
+        #info-panel .panel-title .badge-estado {
             background: #2d5a3f;
             color: #fff;
             border-radius: 30px;
-            padding: 0 12px;
-            font-size: 12px;
+            padding: 0 14px;
+            font-size: 11px;
             line-height: 22px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }
-        #info-panel .info-row {
-            display: flex;
-            justify-content: space-between;
+        #info-panel .panel-accion {
+            background: none;
+            border: none;
+            color: #4a6a5a;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 0 6px;
+            line-height: 1;
+        }
+        #info-panel .panel-accion:hover {
+            color: #c0392b;
+            transform: scale(1.1);
+        }
+        #info-panel .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 12px;
             font-size: 13px;
-            padding: 4px 0;
-            border-bottom: 1px solid #edf2f7;
+            margin-bottom: 12px;
         }
-        #info-panel .info-row:last-child {
-            border-bottom: none;
-        }
-        #info-panel .info-label {
+        #info-panel .info-grid .label {
             color: #4a6a5a;
             font-weight: 500;
         }
-        #info-panel .info-value {
+        #info-panel .info-grid .value {
             color: #0d2b1e;
             font-weight: 600;
             text-align: right;
+            font-family: 'Courier New', monospace;
         }
         #info-panel .buffer-result {
             margin-top: 12px;
-            background: #f0f6f3;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 13px;
-            border-left: 4px solid #2d5a3f;
+            border-top: 2px dashed #dce6e0;
+            padding-top: 14px;
         }
-        #info-panel .buffer-result strong {
+        #info-panel .buffer-result .buffer-titulo {
+            font-weight: 700;
+            color: #1a4a33;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        #info-panel .buffer-result .buffer-titulo .radio-badge {
+            background: #1f77b4;
+            color: #fff;
+            border-radius: 30px;
+            padding: 0 14px;
+            font-size: 12px;
+            line-height: 24px;
+        }
+        /* Tarjetas de elementos del buffer */
+        .elemento-card {
+            background: #f8faf9;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            border-left: 6px solid #ccc;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            transition: 0.2s;
+        }
+        .elemento-card:hover {
+            background: #f0f6f3;
+        }
+        .elemento-card .capa-nombre {
+            font-weight: 700;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .elemento-card .distancia {
+            display: inline-block;
+            background: #f39c12;
+            color: #fff;
+            font-weight: 700;
+            padding: 0 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            line-height: 22px;
+            margin-right: 6px;
+        }
+        .elemento-card .props {
+            font-size: 12px;
+            color: #2c3e50;
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+        }
+        .elemento-card .props span {
+            background: #eef2f5;
+            padding: 0 8px;
+            border-radius: 4px;
+            line-height: 20px;
+        }
+        .elemento-card .props .prop-clave {
+            font-weight: 600;
             color: #1a4a33;
         }
-        /* ---------- BOTONERA (BARRA DE HERRAMIENTAS) ---------- */
+        .color-subcuenca { border-left-color: #e74c3c; }
+        .color-juntas { border-left-color: #2980b9; }
+        .color-redhidro { border-left-color: #00bcd4; }
+        .color-restriccion { border-left-color: #27ae60; }
+        /* ---------- BOTONERA ---------- */
         #toolbar {
             position: absolute;
             bottom: 30px;
@@ -220,6 +305,14 @@
         .btn-tool.secondary:hover:not(:disabled) {
             background: rgba(30, 60, 50, 0.95);
         }
+        .btn-tool.tertiary {
+            background: rgba(0, 70, 120, 0.85);
+            color: white;
+            border-color: #3a8bc0;
+        }
+        .btn-tool.tertiary:hover:not(:disabled) {
+            background: rgba(0, 70, 120, 0.95);
+        }
         .btn-tool .icon {
             font-size: 20px;
         }
@@ -230,10 +323,10 @@
             bottom: 0;
             width: 100%;
         }
-        /* ---------- POPUP DE LEAFLET ESTILIZADO ---------- */
+        /* ---------- POPUPS ESTILIZADOS ---------- */
         .leaflet-popup-content-wrapper {
-            border-radius: 14px !important;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.25) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.20) !important;
             background: rgba(255,255,255,0.95) !important;
             backdrop-filter: blur(4px) !important;
             border-left: 6px solid #2d5a3f;
@@ -252,13 +345,13 @@
         .leaflet-popup-tip {
             background: rgba(255,255,255,0.95) !important;
         }
-        /* ---------- LEYENDA (control de capas) ---------- */
+        /* ---------- CONTROL DE CAPAS ---------- */
         .leaflet-control-layers {
             background: rgba(255,255,255,0.92) !important;
             backdrop-filter: blur(4px);
             border-radius: 14px !important;
             border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             padding: 6px 0;
         }
         .leaflet-control-layers label {
@@ -268,25 +361,123 @@
         .leaflet-control-layers label:hover {
             background: #f0f6f3;
         }
+        /* ---------- MODAL SOLICITUD ---------- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: white;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 92%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px 35px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        .modal-box h2 {
+            color: #1a4a33;
+            border-bottom: 2px solid #2d5a3f;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-box .campo {
+            margin-bottom: 18px;
+        }
+        .modal-box label {
+            display: block;
+            font-weight: 600;
+            color: #1a3c2e;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        .modal-box input, .modal-box select, .modal-box textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #dce6e0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border 0.2s;
+            background: #f8faf9;
+        }
+        .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus {
+            border-color: #2d5a3f;
+            outline: none;
+            background: #fff;
+        }
+        .modal-box textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .modal-box .acciones {
+            display: flex;
+            gap: 14px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+        .modal-box .acciones button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-box .acciones .btn-cerrar {
+            background: #eef2f5;
+            color: #1a3c2e;
+        }
+        .modal-box .acciones .btn-cerrar:hover {
+            background: #dce6e0;
+        }
+        .modal-box .acciones .btn-generar {
+            background: linear-gradient(145deg, #1d6b44, #2d8f5a);
+            color: white;
+        }
+        .modal-box .acciones .btn-generar:hover {
+            background: linear-gradient(145deg, #268053, #35a06a);
+        }
         /* ---------- RESPONSIVE ---------- */
         @media (max-width: 768px) {
             #header h1 small { display: none; }
             #header .status-bar .badge { font-size: 11px; padding: 2px 10px; }
             #header { padding: 0 16px; height: 54px; }
             #map { top: 54px; }
-            #info-panel { width: 260px; left: 12px; bottom: 90px; padding: 14px 16px; }
+            #info-panel { width: 280px; left: 12px; bottom: 90px; padding: 14px 16px; }
             #toolbar { bottom: 16px; right: 16px; gap: 10px; }
             .btn-tool { padding: 10px 18px; font-size: 13px; }
+            .modal-box { padding: 20px; }
         }
         @media (max-width: 480px) {
             #info-panel { width: calc(100% - 24px); left: 12px; bottom: 100px; max-height: 40vh; }
             #toolbar { flex-direction: column; align-items: stretch; bottom: 12px; right: 12px; gap: 8px; }
             .btn-tool { justify-content: center; }
         }
-        /* scroll personalizado para panel */
         #info-panel::-webkit-scrollbar { width: 4px; }
         #info-panel::-webkit-scrollbar-track { background: #e0e8e3; border-radius: 10px; }
         #info-panel::-webkit-scrollbar-thumb { background: #2d5a3f; border-radius: 10px; }
+        .modal-box::-webkit-scrollbar { width: 6px; }
+        .modal-box::-webkit-scrollbar-track { background: #e0e8e3; border-radius: 10px; }
+        .modal-box::-webkit-scrollbar-thumb { background: #2d5a3f; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -294,7 +485,6 @@
 <!-- HEADER -->
 <header id="header">
     <div class="logo-area">
-        <!-- Ícono gota (SVG) -->
         <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="48" fill="#1e90ff" stroke="#fff" stroke-width="2"/>
             <path d="M40,30 L55,28 L60,40 L58,55 L45,70 L38,65 L32,50 Z" fill="#228b22" stroke="#fff" stroke-width="0.5"/>
@@ -314,14 +504,22 @@
 
 <!-- PANEL DE INFORMACIÓN -->
 <div id="info-panel">
-    <div class="panel-title">
-        📊 Diagnóstico en punto
-        <span id="panelBadge">Esperando GPS</span>
+    <div class="panel-header">
+        <div class="panel-title">
+            📊 Diagnóstico en punto
+            <span class="badge-estado" id="panelBadge">Esperando GPS</span>
+        </div>
+        <button class="panel-accion" id="toggleMarkerBtn" title="Ocultar/Mostrar marcador" onclick="toggleMarker()">✕</button>
     </div>
     <div id="panelContent">
-        <div class="info-row"><span class="info-label">Latitud</span><span class="info-value" id="displayLat">---</span></div>
-        <div class="info-row"><span class="info-label">Longitud</span><span class="info-value" id="displayLng">---</span></div>
-        <div class="info-row"><span class="info-label">Precisión</span><span class="info-value" id="displayPrecision">---</span></div>
+        <div class="info-grid">
+            <span class="label">Latitud</span>
+            <span class="value" id="displayLat">---</span>
+            <span class="label">Longitud</span>
+            <span class="value" id="displayLng">---</span>
+            <span class="label">Precisión</span>
+            <span class="value" id="displayPrecision">---</span>
+        </div>
         <div id="bufferResultArea" style="display:none;" class="buffer-result"></div>
     </div>
 </div>
@@ -334,6 +532,45 @@
     <button id="btnBuffer" class="btn-tool secondary" onclick="analizarBuffer()" disabled>
         <span class="icon">🔵</span> Buffer y Análisis
     </button>
+    <button id="btnSolicitud" class="btn-tool tertiary" onclick="abrirModalSolicitud()" disabled>
+        <span class="icon">📄</span> Generar Solicitud
+    </button>
+</div>
+
+<!-- MODAL SOLICITUD -->
+<div id="modalSolicitud" class="modal-overlay">
+    <div class="modal-box">
+        <h2>📄 Generar Solicitud de Derechos de Agua</h2>
+        <form id="formSolicitud">
+            <div class="campo">
+                <label for="solicitante">Nombre del solicitante *</label>
+                <input type="text" id="solicitante" placeholder="Ej: Juan Pérez" required>
+            </div>
+            <div class="campo">
+                <label for="rut">RUT (opcional)</label>
+                <input type="text" id="rut" placeholder="12.345.678-9">
+            </div>
+            <div class="campo">
+                <label for="caudal">Caudal solicitado (L/s) *</label>
+                <input type="number" id="caudal" placeholder="Ej: 25" step="0.1" required>
+            </div>
+            <div class="campo">
+                <label for="fuente">Tipo de fuente *</label>
+                <select id="fuente" required>
+                    <option value="Subterránea">Subterránea</option>
+                    <option value="Superficial">Superficial</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="observaciones">Observaciones / Justificación</label>
+                <textarea id="observaciones" placeholder="Describa el uso, ubicación exacta, etc."></textarea>
+            </div>
+            <div class="acciones">
+                <button type="button" class="btn-cerrar" onclick="cerrarModalSolicitud()">Cancelar</button>
+                <button type="submit" class="btn-generar">Generar Solicitud</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- SCRIPTS -->
@@ -359,6 +596,8 @@ let circuloPrecision = null;
 let watcherID = null;
 let bufferCircle = null;
 let bufferPopupMarker = null;
+let ultimaPosicion = null;
+let marcadorVisible = true;
 
 // ============ ICONOS ============
 const pinIcon = L.divIcon({
@@ -413,6 +652,24 @@ function crearPopup(feature) {
 }
 
 const iconoTipo = { poligono: '■', linea: '━', punto: '●' };
+const colorPorCapa = {
+    'Subsubcuencas': '#e74c3c',
+    'Juntas de Vigilancia': '#2980b9',
+    'Red Hidrográfica': '#00bcd4',
+    'Restricciones': '#27ae60'
+};
+const claseColorPorCapa = {
+    'Subsubcuencas': 'color-subcuenca',
+    'Juntas de Vigilancia': 'color-juntas',
+    'Red Hidrográfica': 'color-redhidro',
+    'Restricciones': 'color-restriccion'
+};
+const emojiPorCapa = {
+    'Subsubcuencas': '🗺️',
+    'Juntas de Vigilancia': '💧',
+    'Red Hidrográfica': '🌊',
+    'Restricciones': '🚫'
+};
 
 function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
     return fetch(url)
@@ -447,9 +704,9 @@ function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
 
 // Carga de capas
 Promise.all([
-    crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', 'poligono', false),
-    crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia', 'punto'),
-    crearCapa('./Restriccion.geojson', 'green', 'Restricciones', 'poligono'),
+    crearCapa('./SubRM2.geojson', '#e74c3c', 'Subsubcuencas', 'poligono', false),
+    crearCapa('./Juntas.geojson', '#2980b9', 'Juntas de Vigilancia', 'punto'),
+    crearCapa('./Restriccion.geojson', '#27ae60', 'Restricciones', 'poligono'),
     crearCapa('./Redhidro.geojson', '#00bcd4', 'Red Hidrográfica', 'linea')
 ])
 .then(() => {
@@ -463,6 +720,7 @@ Promise.all([
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
+    const btnSolicitud = document.getElementById('btnSolicitud');
     if (!navigator.geolocation) {
         alert("Tu navegador no admite geolocalización.");
         return;
@@ -474,7 +732,7 @@ function iniciarBusquedaGPS() {
     btnGPS.innerHTML = '<span class="icon">⏳</span> Buscando...';
     btnGPS.disabled = true;
     btnBuffer.disabled = true;
-    btnBuffer.title = 'Primero obtén tu ubicación GPS';
+    btnSolicitud.disabled = true;
     document.getElementById('gpsDot').className = 'status-dot';
     document.getElementById('gpsStatus').classList.remove('gps-on');
 
@@ -507,8 +765,9 @@ function iniciarWatcher() {
                 watcherID = null;
                 restablecerBotonGPS();
                 const btnBuffer = document.getElementById('btnBuffer');
+                const btnSolicitud = document.getElementById('btnSolicitud');
                 btnBuffer.disabled = false;
-                btnBuffer.title = '';
+                btnSolicitud.disabled = false;
                 document.getElementById('gpsDot').className = 'status-dot active';
                 document.getElementById('gpsStatus').classList.add('gps-on');
                 if (puntoUbicacion) setTimeout(() => puntoUbicacion.openPopup(), 800);
@@ -532,6 +791,7 @@ function actualizarMarcador(posicion, volar = false) {
     const lng = posicion.coords.longitude;
     const precisionMetros = posicion.coords.accuracy;
     const latLng = [lat, lng];
+    ultimaPosicion = { lat, lng, precision: precisionMetros };
 
     if (puntoUbicacion) map.removeLayer(puntoUbicacion);
     if (circuloPrecision) map.removeLayer(circuloPrecision);
@@ -545,7 +805,10 @@ function actualizarMarcador(posicion, volar = false) {
     }).addTo(map);
 
     puntoUbicacion = L.marker(latLng, { icon: pinIcon }).addTo(map);
-    // Actualizar panel
+    marcadorVisible = true;
+    document.getElementById('toggleMarkerBtn').textContent = '✕';
+    document.getElementById('toggleMarkerBtn').title = 'Ocultar marcador';
+
     document.getElementById('displayLat').textContent = lat.toFixed(6);
     document.getElementById('displayLng').textContent = lng.toFixed(6);
     document.getElementById('displayPrecision').textContent = '~' + Math.round(precisionMetros) + ' m';
@@ -611,7 +874,26 @@ function restablecerBotonGPS() {
     btn.disabled = false;
 }
 
-// ============ BUFFER ============
+// ============ OCULTAR/MOSTRAR MARCADOR ============
+function toggleMarker() {
+    if (!puntoUbicacion) return;
+    if (marcadorVisible) {
+        map.removeLayer(puntoUbicacion);
+        // También ocultamos el círculo de precisión? Lo dejamos visible para contexto.
+        // Ocultamos también el popup si está abierto
+        puntoUbicacion.closePopup();
+        marcadorVisible = false;
+        document.getElementById('toggleMarkerBtn').textContent = '◉';
+        document.getElementById('toggleMarkerBtn').title = 'Mostrar marcador';
+    } else {
+        puntoUbicacion.addTo(map);
+        marcadorVisible = true;
+        document.getElementById('toggleMarkerBtn').textContent = '✕';
+        document.getElementById('toggleMarkerBtn').title = 'Ocultar marcador';
+    }
+}
+
+// ============ BUFFER MEJORADO ============
 function analizarBuffer() {
     const btnBuffer = document.getElementById('btnBuffer');
     if (btnBuffer.disabled) { alert('Primero debes obtener tu ubicación GPS.'); return; }
@@ -648,14 +930,14 @@ function analizarBuffer() {
             radius: radio,
             color: '#1f77b4',
             fillColor: '#1f77b4',
-            fillOpacity: 0.1,
+            fillOpacity: 0.08,
             weight: 2,
             dashArray: '5, 5'
         }).addTo(map);
 
-        let resultadoHTML = `<b>🔵 Buffer de ${radio} m</b><br><small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
-        let totalFeaturesEnBuffer = 0;
+        // Recopilar elementos dentro del buffer
         const capasResultados = [];
+        let totalFeaturesEnBuffer = 0;
 
         capasCargadas.forEach(item => {
             const featuresIntersect = [];
@@ -685,33 +967,51 @@ function analizarBuffer() {
             }
         });
 
-        // Mostrar en el panel
+        // Mostrar en el panel con estilo
         const areaResult = document.getElementById('bufferResultArea');
         areaResult.style.display = 'block';
-        let bufferText = '';
+        let bufferHTML = `
+            <div class="buffer-titulo">
+                🔵 Buffer de ${radio} m
+                <span class="radio-badge">${totalFeaturesEnBuffer} elementos</span>
+            </div>
+        `;
+
         if (capasResultados.length === 0) {
-            bufferText = '<i>No se encontraron elementos dentro del buffer.</i>';
+            bufferHTML += '<p style="color:#6a8a7a; font-style:italic;">No se encontraron elementos dentro del buffer.</p>';
         } else {
             capasResultados.forEach(capaRes => {
-                bufferText += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
-                capaRes.elementos.forEach((elem, idx) => {
+                const color = colorPorCapa[capaRes.nombre] || '#888';
+                const claseColor = claseColorPorCapa[capaRes.nombre] || '';
+                const emoji = emojiPorCapa[capaRes.nombre] || '📌';
+                bufferHTML += `<div style="margin-top:12px; font-weight:600; font-size:14px; color:${color};">${emoji} ${capaRes.nombre} (${capaRes.cantidad})</div>`;
+                capaRes.elementos.forEach(elem => {
                     const props = elem.feature.properties;
-                    bufferText += `<div style="margin-left:12px; font-size:12px;">`;
-                    if (elem.distancia !== null) bufferText += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
-                    let count = 0;
-                    for (let prop in props) {
-                        if (count++ > 3) { bufferText += `• <b>${prop}:</b> ${props[prop]}<br>`; }
-                    }
-                    if (Object.keys(props).length > 3) bufferText += `• ... (más propiedades en popup)<br>`;
-                    bufferText += `</div>`;
-                });
-                bufferText += '<br>';
-            });
-            bufferText += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
-        }
-        areaResult.innerHTML = bufferText;
+                    // Tomamos solo algunas propiedades relevantes (mostrar hasta 4)
+                    const propKeys = Object.keys(props);
+                    let propsHTML = '';
+                    const maxProps = 4;
+                    propKeys.slice(0, maxProps).forEach(key => {
+                        propsHTML += `<span><span class="prop-clave">${key}:</span> ${props[key]}</span>`;
+                    });
+                    if (propKeys.length > maxProps) propsHTML += `<span>…</span>`;
 
-        // Popup en el mapa (igual que antes, pero mantenemos)
+                    bufferHTML += `
+                        <div class="elemento-card ${claseColor}">
+                            <div class="capa-nombre">
+                                <span class="distancia">${Math.round(elem.distancia)} m</span>
+                                ${emoji} ${capaRes.nombre}
+                            </div>
+                            <div class="props">${propsHTML}</div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        areaResult.innerHTML = bufferHTML;
+
+        // Popup en el mapa (también mejorado)
         if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
         bufferPopupMarker = L.marker([lat, lng], {
             icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
@@ -725,8 +1025,12 @@ function analizarBuffer() {
                 capaRes.elementos.forEach(elem => {
                     const props = elem.feature.properties;
                     popupContent += `<div style="margin-left:15px; font-size:12px;">`;
-                    if (elem.distancia !== null) popupContent += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
-                    for (let prop in props) popupContent += `• <b>${prop}:</b> ${props[prop]}<br>`;
+                    if (elem.distancia !== null) popupContent += `🔹 Distancia: <b style="color:#e67e22;">${Math.round(elem.distancia)} m</b><br>`;
+                    let count = 0;
+                    for (let prop in props) {
+                        if (count++ < 4) popupContent += `• <b>${prop}:</b> ${props[prop]}<br>`;
+                    }
+                    if (Object.keys(props).length > 4) popupContent += `• ... (más en el panel)<br>`;
                     popupContent += `</div>`;
                 });
                 popupContent += '<br>';
@@ -752,7 +1056,139 @@ function restablecerBotonBuffer() {
     btn.disabled = false;
 }
 
-// ============ INICIALIZACIÓN DE PANEL (por defecto) ============
+// ============ MODAL SOLICITUD ============
+function abrirModalSolicitud() {
+    if (!ultimaPosicion) {
+        alert('Primero debes obtener tu ubicación GPS.');
+        return;
+    }
+    document.getElementById('modalSolicitud').classList.add('active');
+}
+
+function cerrarModalSolicitud() {
+    document.getElementById('modalSolicitud').classList.remove('active');
+    document.getElementById('formSolicitud').reset();
+}
+
+document.getElementById('formSolicitud').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!ultimaPosicion) {
+        alert('No hay ubicación GPS disponible.');
+        return;
+    }
+    const solicitante = document.getElementById('solicitante').value.trim();
+    const rut = document.getElementById('rut').value.trim();
+    const caudal = document.getElementById('caudal').value.trim();
+    const fuente = document.getElementById('fuente').value;
+    const observaciones = document.getElementById('observaciones').value.trim();
+
+    if (!solicitante || !caudal) {
+        alert('Por favor completa los campos obligatorios (*).');
+        return;
+    }
+
+    const lat = ultimaPosicion.lat;
+    const lng = ultimaPosicion.lng;
+    const precision = ultimaPosicion.precision;
+    const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+
+    let bufferInfo = '';
+    const bufferArea = document.getElementById('bufferResultArea');
+    if (bufferArea.style.display !== 'none' && bufferArea.innerHTML.trim() !== '') {
+        bufferInfo = `<h3>Elementos dentro del buffer</h3>
+                      <div style="background:#f5f9f7; padding:12px; border-radius:8px; margin:12px 0;">
+                        ${bufferArea.innerHTML}
+                      </div>`;
+    }
+
+    const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=600x300&maptype=mapnik&markers=${lat},${lng},ol-marker`;
+
+    const docHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Solicitud de Derechos de Agua</title>
+<style>
+body { font-family: 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #1a2e24; background: #fff; }
+header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2d5a3f; padding-bottom: 16px; margin-bottom: 24px; }
+header h1 { margin: 0; font-size: 24px; color: #1a4a33; }
+header small { font-weight: normal; font-size: 16px; color: #3a6a55; }
+.logo { width: 60px; height: 60px; }
+.detalle { background: #f0f6f3; padding: 16px 20px; border-radius: 12px; margin: 16px 0; border-left: 6px solid #2d5a3f; }
+.detalle p { margin: 6px 0; }
+.tabla-datos { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.tabla-datos td { padding: 8px 12px; border-bottom: 1px solid #dce6e0; }
+.tabla-datos td:first-child { font-weight: 600; width: 40%; color: #1a4a33; }
+.mapa { margin: 20px 0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+.mapa img { width: 100%; height: auto; display: block; }
+.firma { margin-top: 40px; border-top: 2px solid #dce6e0; padding-top: 20px; font-style: italic; color: #4a6a5a; }
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="48" fill="#1e90ff" stroke="#fff" stroke-width="2"/>
+    <path d="M40,30 L55,28 L60,40 L58,55 L45,70 L38,65 L32,50 Z" fill="#228b22" stroke="#fff" stroke-width="0.5"/>
+    <path d="M38,35 L44,34 L46,45 L44,60 L42,70 L38,65 Z" fill="#FFD700" stroke="#b8860b" stroke-width="0.8"/>
+  </svg>
+  <div>
+    <h1>Solicitud de Derechos de Agua <small>ChileAguas</small></h1>
+    <p style="margin:0; color:#2d5a3f;">Documento generado automáticamente</p>
+  </div>
+</header>
+
+<h2>Memoria Explicativa</h2>
+<p>El presente documento formaliza la solicitud de derechos de aprovechamiento de aguas, de acuerdo a la normativa vigente, sobre la base de la georreferenciación realizada en el Sistema ChileAguas.</p>
+
+<div class="detalle">
+  <p><strong>Fecha de emisión:</strong> ${fecha}</p>
+  <p><strong>Solicitante:</strong> ${solicitante}${rut ? ' (RUT: '+rut+')' : ''}</p>
+  <p><strong>Caudal solicitado:</strong> ${caudal} L/s</p>
+  <p><strong>Tipo de fuente:</strong> ${fuente}</p>
+  <p><strong>Ubicación (GPS):</strong> Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)} (Precisión ~${Math.round(precision)} m)</p>
+</div>
+
+<h3>Georreferenciación y Mapa de ubicación</h3>
+<p>El punto exacto de la solicitud se encuentra en las siguientes coordenadas:</p>
+<table class="tabla-datos">
+  <tr><td>Latitud</td><td>${lat.toFixed(6)}</td></tr>
+  <tr><td>Longitud</td><td>${lng.toFixed(6)}</td></tr>
+  <tr><td>Precisión estimada</td><td>~${Math.round(precision)} metros</td></tr>
+  <tr><td>Fuente</td><td>${fuente}</td></tr>
+  <tr><td>Caudal</td><td>${caudal} L/s</td></tr>
+</table>
+
+<div class="mapa">
+  <img src="${staticMapUrl}" alt="Mapa de ubicación" />
+  <p style="text-align:center; font-size:12px; color:#6a8a7a; margin-top:4px;">Ubicación del punto solicitado (marcador rojo)</p>
+</div>
+
+<h3>Justificación y observaciones</h3>
+<p>${observaciones || 'Sin observaciones adicionales.'}</p>
+
+${bufferInfo}
+
+<div class="firma">
+  <p>Firma del solicitante: _________________________</p>
+  <p style="font-size:12px; margin-top:20px;">Este documento ha sido generado automáticamente por el sistema ChileAguas y tiene valor referencial para la tramitación oficial.</p>
+</div>
+</body>
+</html>
+    `;
+
+    const ventana = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!ventana) {
+        alert('Por favor permite ventanas emergentes para generar el documento.');
+        return;
+    }
+    ventana.document.write(docHtml);
+    ventana.document.close();
+
+    cerrarModalSolicitud();
+});
+
+// ============ INICIALIZACIÓN ============
 document.getElementById('panelBadge').style.background = '#6a8a7a';
 </script>
 </body>
