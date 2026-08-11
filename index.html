@@ -3,137 +3,345 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapaencas - GPS Satelital + Buffer</title>
+    <title>ChileAguas - Diagnóstico Georreferenciado</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body {
-            height: 100%;
-            width: 100%;
+        /* ---------- RESET Y BASE ---------- */
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-        /* Barra superior con degradado y textura */
-        #barra-superior {
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: #eef2f5;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        /* ---------- HEADER (BARRA SUPERIOR) ---------- */
+        #header {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 5vh;
-            min-height: 36px;
-            background: linear-gradient(135deg, #1a3c2e 0%, #2d5a3f 100%);
-            background-image: 
-                linear-gradient(135deg, #1a3c2e 0%, #2d5a3f 100%),
-                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M0 0h100v100H0z" fill="none"/><path d="M10 10h80v80H10z" fill="rgba(255,255,255,0.03)"/></svg>');
-            background-blend-mode: overlay;
-            color: white;
+            height: 60px;
+            background: linear-gradient(145deg, #0d2b1e, #1a4a33);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 15px;
-            font-family: sans-serif;
-            font-size: clamp(14px, 2.5vh, 20px);
-            font-weight: bold;
-            letter-spacing: 0.5px;
+            padding: 0 24px;
             z-index: 2000;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            box-sizing: border-box;
+            border-bottom: 2px solid #3b9e6d;
         }
-        #barra-superior .titulo {
+        #header .logo-area {
             display: flex;
             align-items: center;
+            gap: 12px;
         }
-        #barra-superior .globo {
-            width: clamp(24px, 4vh, 40px);
-            height: clamp(24px, 4vh, 40px);
-            margin-left: 10px;
-            flex-shrink: 0;
+        #header .logo-icon {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
+        #header h1 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.3);
+        }
+        #header h1 small {
+            font-size: 14px;
+            font-weight: 300;
+            color: #b8e0c8;
+            margin-left: 8px;
+        }
+        #header .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            color: #cde8da;
+            font-size: 14px;
+            font-weight: 400;
+        }
+        #header .status-bar .badge {
+            background: rgba(255,255,255,0.10);
+            padding: 4px 12px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        #header .status-bar .badge.gps-on {
+            background: #1f8b4c;
+            border-color: #55c98d;
+            color: #fff;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e74c3c;
+            margin-right: 6px;
+            vertical-align: middle;
+            transition: background 0.3s;
+        }
+        .status-dot.active {
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        /* ---------- PANEL DE INFORMACIÓN (FLOTANTE) ---------- */
+        #info-panel {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            width: 320px;
+            max-width: calc(100% - 40px);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(6px);
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            padding: 18px 20px;
+            z-index: 1500;
+            border: 1px solid rgba(255,255,255,0.4);
+            transition: all 0.3s ease;
+            max-height: 50vh;
+            overflow-y: auto;
+            pointer-events: none; /* para no interferir con el mapa */
+        }
+        #info-panel.active {
+            pointer-events: auto;
+        }
+        #info-panel .panel-title {
+            font-weight: 600;
+            color: #1a3c2e;
+            border-bottom: 2px solid #2d5a3f;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #info-panel .panel-title span {
+            background: #2d5a3f;
+            color: #fff;
+            border-radius: 30px;
+            padding: 0 12px;
+            font-size: 12px;
+            line-height: 22px;
+        }
+        #info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 4px 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+        #info-panel .info-row:last-child {
+            border-bottom: none;
+        }
+        #info-panel .info-label {
+            color: #4a6a5a;
+            font-weight: 500;
+        }
+        #info-panel .info-value {
+            color: #0d2b1e;
+            font-weight: 600;
+            text-align: right;
+        }
+        #info-panel .buffer-result {
+            margin-top: 12px;
+            background: #f0f6f3;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 13px;
+            border-left: 4px solid #2d5a3f;
+        }
+        #info-panel .buffer-result strong {
+            color: #1a4a33;
+        }
+        /* ---------- BOTONERA (BARRA DE HERRAMIENTAS) ---------- */
+        #toolbar {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 14px;
+            z-index: 1500;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .btn-tool {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(4px);
+            border: none;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a3c2e;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.20);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-family: inherit;
+            letter-spacing: 0.3px;
+        }
+        .btn-tool:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            background: #ffffff;
+        }
+        .btn-tool:active:not(:disabled) {
+            transform: translateY(0px);
+        }
+        .btn-tool:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(0.3);
+        }
+        .btn-tool.primary {
+            background: linear-gradient(145deg, #1d6b44, #2d8f5a);
+            color: white;
+            border-color: #3b9e6d;
+        }
+        .btn-tool.primary:hover:not(:disabled) {
+            background: linear-gradient(145deg, #268053, #35a06a);
+        }
+        .btn-tool.secondary {
+            background: rgba(30, 60, 50, 0.85);
+            color: white;
+            border-color: #4a7a5a;
+        }
+        .btn-tool.secondary:hover:not(:disabled) {
+            background: rgba(30, 60, 50, 0.95);
+        }
+        .btn-tool .icon {
+            font-size: 20px;
+        }
+        /* ---------- MAPA ---------- */
         #map {
             position: absolute;
-            top: 5vh;
+            top: 60px;
             bottom: 0;
             width: 100%;
         }
-        .btn-ubicacion, .btn-buffer {
-            position: absolute;
-            z-index: 1500;
-            background: #ffffff;
-            border: 2px solid rgba(0,0,0,0.2);
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            font-family: sans-serif;
+        /* ---------- POPUP DE LEAFLET ESTILIZADO ---------- */
+        .leaflet-popup-content-wrapper {
+            border-radius: 14px !important;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.25) !important;
+            background: rgba(255,255,255,0.95) !important;
+            backdrop-filter: blur(4px) !important;
+            border-left: 6px solid #2d5a3f;
+        }
+        .leaflet-popup-content {
             font-size: 13px;
-            transition: all 0.2s ease;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: #1a2e24;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 6px 2px;
         }
-        .btn-ubicacion {
-            top: calc(5vh + 15px);
-            right: 15px;
+        .leaflet-popup-content b {
+            color: #1a4a33;
         }
-        .btn-buffer {
-            top: calc(5vh + 70px);
-            right: 15px;
+        .leaflet-popup-tip {
+            background: rgba(255,255,255,0.95) !important;
         }
-        .btn-ubicacion:disabled, .btn-buffer:disabled {
-            background: #fff3cd;
-            color: #856404;
-            border-color: #ffeeba;
-            cursor: not-allowed;
+        /* ---------- LEYENDA (control de capas) ---------- */
+        .leaflet-control-layers {
+            background: rgba(255,255,255,0.92) !important;
+            backdrop-filter: blur(4px);
+            border-radius: 14px !important;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            padding: 6px 0;
         }
-        .pin-marcador {
-            background: none;
-            border: none;
+        .leaflet-control-layers label {
+            font-weight: 500;
+            padding: 4px 12px;
         }
-        /* Icono gota de agua para puntos de Juntas */
-        .icono-gota {
-            background: none;
-            border: none;
+        .leaflet-control-layers label:hover {
+            background: #f0f6f3;
         }
+        /* ---------- RESPONSIVE ---------- */
         @media (max-width: 768px) {
-            .btn-ubicacion, .btn-buffer {
-                font-size: 16px;
-                padding: 12px 20px;
-                border-radius: 8px;
-            }
-            .btn-ubicacion {
-                top: calc(5vh + 15px);
-                right: 10px;
-            }
-            .btn-buffer {
-                top: calc(5vh + 80px);
-                right: 10px;
-            }
+            #header h1 small { display: none; }
+            #header .status-bar .badge { font-size: 11px; padding: 2px 10px; }
+            #header { padding: 0 16px; height: 54px; }
+            #map { top: 54px; }
+            #info-panel { width: 260px; left: 12px; bottom: 90px; padding: 14px 16px; }
+            #toolbar { bottom: 16px; right: 16px; gap: 10px; }
+            .btn-tool { padding: 10px 18px; font-size: 13px; }
         }
+        @media (max-width: 480px) {
+            #info-panel { width: calc(100% - 24px); left: 12px; bottom: 100px; max-height: 40vh; }
+            #toolbar { flex-direction: column; align-items: stretch; bottom: 12px; right: 12px; gap: 8px; }
+            .btn-tool { justify-content: center; }
+        }
+        /* scroll personalizado para panel */
+        #info-panel::-webkit-scrollbar { width: 4px; }
+        #info-panel::-webkit-scrollbar-track { background: #e0e8e3; border-radius: 10px; }
+        #info-panel::-webkit-scrollbar-thumb { background: #2d5a3f; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div id="barra-superior">
-    <span class="titulo">Sistema georeferencia Chile</span>
-    <!-- Globo terráqueo con Chile destacado -->
-    <svg class="globo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <!-- Círculo base (mundo) -->
-        <circle cx="50" cy="50" r="48" fill="#1e90ff" stroke="white" stroke-width="2"/>
-        <!-- Continente simplificado (América del Sur) -->
-        <path d="M40,30 L55,28 L60,40 L58,55 L45,70 L38,65 L32,50 Z" fill="#228b22" stroke="white" stroke-width="0.5"/>
-        <!-- Chile resaltado (franja alargada) -->
-        <path d="M38,35 L44,34 L46,45 L44,60 L42,70 L38,65 Z" fill="#FFD700" stroke="#b8860b" stroke-width="0.8"/>
-        <!-- Líneas de longitud/latitud -->
-        <ellipse cx="50" cy="50" rx="48" ry="20" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
-        <line x1="50" y1="2" x2="50" y2="98" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
-    </svg>
-</div>
+<!-- HEADER -->
+<header id="header">
+    <div class="logo-area">
+        <!-- Ícono gota (SVG) -->
+        <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="#1e90ff" stroke="#fff" stroke-width="2"/>
+            <path d="M40,30 L55,28 L60,40 L58,55 L45,70 L38,65 L32,50 Z" fill="#228b22" stroke="#fff" stroke-width="0.5"/>
+            <path d="M38,35 L44,34 L46,45 L44,60 L42,70 L38,65 Z" fill="#FFD700" stroke="#b8860b" stroke-width="0.8"/>
+        </svg>
+        <h1>ChileAguas <small>Diagnóstico Georreferenciado</small></h1>
+    </div>
+    <div class="status-bar">
+        <span class="badge" id="gpsStatus"><span class="status-dot" id="gpsDot"></span> GPS</span>
+        <span class="badge">🔗 DGA</span>
+        <span class="badge">📡 Leaflet</span>
+    </div>
+</header>
 
-<button id="btnGPS" class="btn-ubicacion" onclick="iniciarBusquedaGPS()">📍 Obtener Ubicación Exacta</button>
-<button id="btnBuffer" class="btn-buffer" onclick="analizarBuffer()" disabled title="Primero obtén tu ubicación GPS">🔵 Buffer y Análisis</button>
+<!-- MAPA -->
 <div id="map"></div>
 
+<!-- PANEL DE INFORMACIÓN -->
+<div id="info-panel">
+    <div class="panel-title">
+        📊 Diagnóstico en punto
+        <span id="panelBadge">Esperando GPS</span>
+    </div>
+    <div id="panelContent">
+        <div class="info-row"><span class="info-label">Latitud</span><span class="info-value" id="displayLat">---</span></div>
+        <div class="info-row"><span class="info-label">Longitud</span><span class="info-value" id="displayLng">---</span></div>
+        <div class="info-row"><span class="info-label">Precisión</span><span class="info-value" id="displayPrecision">---</span></div>
+        <div id="bufferResultArea" style="display:none;" class="buffer-result"></div>
+    </div>
+</div>
+
+<!-- BOTONERA -->
+<div id="toolbar">
+    <button id="btnGPS" class="btn-tool primary" onclick="iniciarBusquedaGPS()">
+        <span class="icon">📍</span> Obtener Ubicación
+    </button>
+    <button id="btnBuffer" class="btn-tool secondary" onclick="analizarBuffer()" disabled>
+        <span class="icon">🔵</span> Buffer y Análisis
+    </button>
+</div>
+
+<!-- SCRIPTS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
+// ============ INICIALIZACIÓN DEL MAPA ============
 const map = L.map('map').setView([-33.45, -70.66], 10);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -141,10 +349,10 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas con iconos de tipo (se añadirán al crear cada capa)
+// Control de capas
 const controlCapas = L.control.layers({}, {}, { collapsed: false, position: 'topleft' }).addTo(map);
 const grupoGeneral = L.featureGroup();
-const capasCargadas = []; 
+const capasCargadas = [];
 
 let puntoUbicacion = null;
 let circuloPrecision = null;
@@ -152,65 +360,50 @@ let watcherID = null;
 let bufferCircle = null;
 let bufferPopupMarker = null;
 
-// Icono pin rojo para ubicación GPS
+// ============ ICONOS ============
 const pinIcon = L.divIcon({
     className: 'pin-marcador',
-    html: '<svg width="32" height="44" viewBox="0 0 32 44" xmlns="http://www.w3.org/2000/svg">' +
-          '<path d="M16 0C7.164 0 0 7.164 0 16c0 12 16 28 16 28s16-16 16-28C32 7.164 24.836 0 16 0z" fill="#e63946" stroke="#fff" stroke-width="2.5"/>' +
-          '<circle cx="16" cy="16" r="6" fill="#fff"/>' +
-          '</svg>',
+    html: `<svg width="32" height="44" viewBox="0 0 32 44" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 0C7.164 0 0 7.164 0 16c0 12 16 28 16 28s16-16 16-28C32 7.164 24.836 0 16 0z" fill="#e63946" stroke="#fff" stroke-width="2.5"/>
+            <circle cx="16" cy="16" r="6" fill="#fff"/>
+          </svg>`,
     iconSize: [32, 44],
     iconAnchor: [16, 44],
     popupAnchor: [0, -44]
 });
 
-// Icono gota de agua para puntos de Juntas de Vigilancia
 const iconoGotaAgua = L.divIcon({
     className: 'icono-gota',
-    html: '<svg width="24" height="30" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">' +
-          '<path d="M12 0C5.373 0 0 5.373 0 12c0 6.627 12 18 12 18s12-11.373 12-18C24 5.373 18.627 0 12 0z" fill="#1e90ff" stroke="#fff" stroke-width="1.5"/>' +
-          '<circle cx="12" cy="12" r="4" fill="#fff" opacity="0.8"/>' +
-          '</svg>',
+    html: `<svg width="24" height="30" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 6.627 12 18 12 18s12-11.373 12-18C24 5.373 18.627 0 12 0z" fill="#1e90ff" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="4" fill="#fff" opacity="0.8"/>
+          </svg>`,
     iconSize: [24, 30],
     iconAnchor: [12, 30],
     popupAnchor: [0, -30]
 });
 
-// ---------- FUNCIÓN AUXILIAR PARA ANÁLISIS ESPACIAL SEGURO ----------
+// ============ FUNCIONES AUXILIARES ============
 function analizarRelacionEspacial(puntoUsuario, feature) {
     try {
         const tipo = feature.geometry.type;
-        
         if (tipo === 'Polygon' || tipo === 'MultiPolygon') {
-            return {
-                tipo: 'poligono',
-                dentro: turf.booleanPointInPolygon(puntoUsuario, feature),
-                distancia: null
-            };
+            return { tipo: 'poligono', dentro: turf.booleanPointInPolygon(puntoUsuario, feature), distancia: null };
         } else if (tipo === 'LineString' || tipo === 'MultiLineString') {
             const distancia = turf.pointToLineDistance(puntoUsuario, feature, { units: 'meters' });
-            return {
-                tipo: 'linea',
-                dentro: false,
-                distancia: distancia
-            };
+            return { tipo: 'linea', dentro: false, distancia: distancia };
         } else if (tipo === 'Point') {
             const distancia = turf.distance(puntoUsuario, feature, { units: 'meters' });
-            return {
-                tipo: 'punto',
-                dentro: false,
-                distancia: distancia
-            };
+            return { tipo: 'punto', dentro: false, distancia: distancia };
         } else {
             return { tipo: 'desconocido', dentro: false, distancia: null };
         }
-    } catch (error) {
-        console.warn(`Error analizando geometría tipo ${feature.geometry.type}:`, error.message);
+    } catch (e) {
+        console.warn('Error analizando geometría:', e.message);
         return { tipo: 'error', dentro: false, distancia: null };
     }
 }
 
-// ---------- CARGA DE CAPAS MEJORADA (con iconos de tipo y personalización de puntos) ----------
 function crearPopup(feature) {
     let html = '';
     for (let campo in feature.properties) {
@@ -219,12 +412,7 @@ function crearPopup(feature) {
     return html;
 }
 
-// Íconos Unicode para el control de capas
-const iconoTipo = {
-    poligono: '■',
-    linea: '━',
-    punto: '●'
-};
+const iconoTipo = { poligono: '■', linea: '━', punto: '●' };
 
 function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
     return fetch(url)
@@ -242,17 +430,12 @@ function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
                     }
                 }
             };
-
-            // Si la capa es de puntos, usar icono personalizado (gota de agua azul)
             if (tipoGeometria === 'punto') {
                 opcionesCapa.pointToLayer = function (feature, latlng) {
                     return L.marker(latlng, { icon: iconoGotaAgua });
                 };
             }
-
             const capa = L.geoJSON(data, opcionesCapa);
-
-            // Nombre con icono de tipo en el control de capas
             const nombreConIcono = `<span style="color:${color}; font-size:1.2em;">${iconoTipo[tipoGeometria] || '●'}</span> ${nombre}`;
             controlCapas.addOverlay(capa, nombreConIcono);
             capa.addTo(map);
@@ -262,10 +445,10 @@ function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de todas las capas (se asigna tipo de geometría predominante para el icono)
+// Carga de capas
 Promise.all([
     crearCapa('./SubRM2.geojson', 'red', 'Subsubcuencas', 'poligono', false),
-    crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia', 'punto'), // ahora con gota azul
+    crearCapa('./Juntas.geojson', 'blue', 'Juntas de Vigilancia', 'punto'),
     crearCapa('./Restriccion.geojson', 'green', 'Restricciones', 'poligono'),
     crearCapa('./Redhidro.geojson', '#00bcd4', 'Red Hidrográfica', 'linea')
 ])
@@ -276,9 +459,7 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
-// ---------- GPS CORREGIDO CON VUELO ASEGURADO (sin cambios) ----------
-// ... (se mantiene todo el código de GPS, buffer y análisis exactamente igual al último proporcionado por el usuario) ...
-
+// ============ GPS ============
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
@@ -290,10 +471,12 @@ function iniciarBusquedaGPS() {
         navigator.geolocation.clearWatch(watcherID);
         watcherID = null;
     }
-    btnGPS.innerText = '⏳ Buscando satélites...';
+    btnGPS.innerHTML = '<span class="icon">⏳</span> Buscando...';
     btnGPS.disabled = true;
     btnBuffer.disabled = true;
     btnBuffer.title = 'Primero obtén tu ubicación GPS';
+    document.getElementById('gpsDot').className = 'status-dot';
+    document.getElementById('gpsStatus').classList.remove('gps-on');
 
     const opcionesGPS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
     navigator.geolocation.getCurrentPosition(
@@ -326,6 +509,8 @@ function iniciarWatcher() {
                 const btnBuffer = document.getElementById('btnBuffer');
                 btnBuffer.disabled = false;
                 btnBuffer.title = '';
+                document.getElementById('gpsDot').className = 'status-dot active';
+                document.getElementById('gpsStatus').classList.add('gps-on');
                 if (puntoUbicacion) setTimeout(() => puntoUbicacion.openPopup(), 800);
             }
         },
@@ -360,6 +545,12 @@ function actualizarMarcador(posicion, volar = false) {
     }).addTo(map);
 
     puntoUbicacion = L.marker(latLng, { icon: pinIcon }).addTo(map);
+    // Actualizar panel
+    document.getElementById('displayLat').textContent = lat.toFixed(6);
+    document.getElementById('displayLng').textContent = lng.toFixed(6);
+    document.getElementById('displayPrecision').textContent = '~' + Math.round(precisionMetros) + ' m';
+    document.getElementById('panelBadge').textContent = '📍 Ubicación fijada';
+    document.getElementById('panelBadge').style.background = '#2d5a3f';
 
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
@@ -416,18 +607,18 @@ function manejarErrorUbicacion(error) {
 
 function restablecerBotonGPS() {
     const btn = document.getElementById('btnGPS');
-    btn.innerText = '📍 Obtener Ubicación Exacta';
+    btn.innerHTML = '<span class="icon">📍</span> Obtener Ubicación';
     btn.disabled = false;
 }
 
-// ---------- BUFFER Y ANÁLISIS (sin cambios) ----------
+// ============ BUFFER ============
 function analizarBuffer() {
     const btnBuffer = document.getElementById('btnBuffer');
     if (btnBuffer.disabled) { alert('Primero debes obtener tu ubicación GPS.'); return; }
     if (!puntoUbicacion) { alert('No hay una ubicación GPS fijada.'); return; }
 
     btnBuffer.disabled = true;
-    btnBuffer.innerText = '⏳ Analizando...';
+    btnBuffer.innerHTML = '<span class="icon">⏳</span> Analizando...';
 
     try {
         const latLng = puntoUbicacion.getLatLng();
@@ -494,29 +685,55 @@ function analizarBuffer() {
             }
         });
 
+        // Mostrar en el panel
+        const areaResult = document.getElementById('bufferResultArea');
+        areaResult.style.display = 'block';
+        let bufferText = '';
         if (capasResultados.length === 0) {
-            resultadoHTML += '<i>No se encontraron elementos dentro del buffer.</i>';
+            bufferText = '<i>No se encontraron elementos dentro del buffer.</i>';
         } else {
             capasResultados.forEach(capaRes => {
-                resultadoHTML += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
+                bufferText += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
                 capaRes.elementos.forEach((elem, idx) => {
                     const props = elem.feature.properties;
-                    resultadoHTML += `<div style="margin-left:15px; font-size:12px;">`;
-                    if (elem.distancia !== null) resultadoHTML += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
-                    for (let prop in props) resultadoHTML += `• <b>${prop}:</b> ${props[prop]}<br>`;
-                    resultadoHTML += `</div>`;
-                    if (idx < capaRes.elementos.length - 1) resultadoHTML += '<br>';
+                    bufferText += `<div style="margin-left:12px; font-size:12px;">`;
+                    if (elem.distancia !== null) bufferText += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
+                    let count = 0;
+                    for (let prop in props) {
+                        if (count++ > 3) { bufferText += `• <b>${prop}:</b> ${props[prop]}<br>`; }
+                    }
+                    if (Object.keys(props).length > 3) bufferText += `• ... (más propiedades en popup)<br>`;
+                    bufferText += `</div>`;
                 });
-                resultadoHTML += '<br>';
+                bufferText += '<br>';
             });
-            resultadoHTML += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
+            bufferText += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
         }
+        areaResult.innerHTML = bufferText;
 
+        // Popup en el mapa (igual que antes, pero mantenemos)
         if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
         bufferPopupMarker = L.marker([lat, lng], {
             icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
         }).addTo(map);
-        bufferPopupMarker.bindPopup(resultadoHTML, { maxWidth: 400, maxHeight: 500 });
+        let popupContent = `<b>🔵 Buffer de ${radio} m</b><br><small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
+        if (capasResultados.length === 0) {
+            popupContent += '<i>No se encontraron elementos dentro del buffer.</i>';
+        } else {
+            capasResultados.forEach(capaRes => {
+                popupContent += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
+                capaRes.elementos.forEach(elem => {
+                    const props = elem.feature.properties;
+                    popupContent += `<div style="margin-left:15px; font-size:12px;">`;
+                    if (elem.distancia !== null) popupContent += `🔹 Distancia: ${Math.round(elem.distancia)} m<br>`;
+                    for (let prop in props) popupContent += `• <b>${prop}:</b> ${props[prop]}<br>`;
+                    popupContent += `</div>`;
+                });
+                popupContent += '<br>';
+            });
+            popupContent += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
+        }
+        bufferPopupMarker.bindPopup(popupContent, { maxWidth: 400, maxHeight: 500 });
         bufferPopupMarker.openPopup();
 
         map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
@@ -531,10 +748,12 @@ function analizarBuffer() {
 
 function restablecerBotonBuffer() {
     const btn = document.getElementById('btnBuffer');
-    btn.innerText = '🔵 Buffer y Análisis';
+    btn.innerHTML = '<span class="icon">🔵</span> Buffer y Análisis';
     btn.disabled = false;
-    btn.title = '';
 }
+
+// ============ INICIALIZACIÓN DE PANEL (por defecto) ============
+document.getElementById('panelBadge').style.background = '#6a8a7a';
 </script>
 </body>
 </html>
