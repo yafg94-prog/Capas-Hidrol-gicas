@@ -470,7 +470,10 @@
 
 <script>
 // ============ INICIALIZACIÓN DEL MAPA ============
-const map = L.map('map').setView([-33.45, -70.66], 10);
+const map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true
+}).setView([-33.45, -70.66], 10);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -613,7 +616,8 @@ function convertirAUTM(lat, lng) {
         const utm = fromLatLon(lat, lng);
         return { norte: utm.northing, este: utm.easting, huso: utm.zoneNum, letra: utm.zoneLetter };
     } catch (e) {
-        return { norte: lat, este: lng, huso: 19 };
+        // Si falla, devolvemos valores aproximados (huso 19 para Chile)
+        return { norte: lat * 111000, este: lng * 111000, huso: 19 };
     }
 }
 
@@ -828,7 +832,7 @@ function toggleMarker() {
     }
 }
 
-// ============ BUFFER (con panel independiente) ============
+// ============ BUFFER ============
 function cerrarBuffer() {
     document.getElementById('buffer-panel').style.display = 'none';
     if (bufferCircle) {
@@ -953,7 +957,6 @@ function analizarBuffer() {
         }
 
         content.innerHTML = bufferHTML;
-        // Scroll al final
         panel.scrollTop = panel.scrollHeight;
 
         map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
@@ -972,19 +975,38 @@ function restablecerBotonBuffer() {
     btn.disabled = false;
 }
 
-// ============ CAPTURA DE MAPA PARA DOCUMENTOS ============
+// ============ CAPTURA DE MAPA (SIN CONTROLES) ============
 function capturarMapa() {
     return new Promise((resolve) => {
+        // Ocultar controles temporalmente
+        const controlContainer = document.querySelector('.leaflet-control-container');
+        const originalDisplay = controlContainer.style.display;
+        controlContainer.style.display = 'none';
+        // También ocultar el panel de diagnóstico y buffer si están visibles
+        const infoPanel = document.getElementById('info-panel');
+        const bufferPanel = document.getElementById('buffer-panel');
+        const infoDisplay = infoPanel.style.display;
+        const bufferDisplay = bufferPanel.style.display;
+        infoPanel.style.display = 'none';
+        bufferPanel.style.display = 'none';
+
         const mapElement = document.getElementById('map');
-        // Usamos html2canvas para capturar el mapa
         html2canvas(mapElement, {
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#eef2f5',
             scale: 1.2
         }).then(canvas => {
+            // Restaurar todo
+            controlContainer.style.display = originalDisplay || '';
+            infoPanel.style.display = infoDisplay || '';
+            bufferPanel.style.display = bufferDisplay || '';
             resolve(canvas.toDataURL('image/png'));
         }).catch(() => {
+            // Restaurar en caso de error
+            controlContainer.style.display = originalDisplay || '';
+            infoPanel.style.display = infoDisplay || '';
+            bufferPanel.style.display = bufferDisplay || '';
             resolve(null);
         });
     });
@@ -996,7 +1018,6 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
     const lng = ultimaPosicion.lng;
     const precision = ultimaPosicion.precision;
     const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
-    const fechaISO = new Date().toISOString().slice(0,10);
 
     // Obtener UTM
     const utm = convertirAUTM(lat, lng);
@@ -1004,7 +1025,7 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
     const este = utm.este.toFixed(0);
     const huso = utm.huso;
 
-    // Helper para obtener propiedades
+    // Helper para obtener propiedades con muchos nombres posibles
     function getProp(obj, ...keys) {
         for (let key of keys) {
             if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
@@ -1014,9 +1035,10 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
 
     const subcuenca = datosCapa['Subsubcuencas'] || {};
     const restriccion = datosCapa['Restricciones'] || {};
-    const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna');
-    const provincia = getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
-    const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region');
+    // Intentar obtener comuna, provincia, región desde la subcuenca o restricción
+    const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna', 'NOM_COM') || getProp(restriccion, 'COMUNA', 'NOM_COMUNA', 'Comuna');
+    const provincia = getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia') || getProp(restriccion, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
+    const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region') || getProp(restriccion, 'REGION', 'NOM_REGION', 'Region');
     const cuenca = getProp(subcuenca, 'NOM_CUEN', 'CUENCA', 'Cuenca');
     const subcuencaNombre = getProp(subcuenca, 'NOM_SUBC', 'NOM_SSUBC', 'SUBCUENCA');
     const acuifero = getProp(subcuenca, 'NOM_ACUIF', 'ACUIFERO', 'Acuifero');
@@ -1033,11 +1055,11 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
         restriccionClase = 'prohibicion';
     }
 
-    // Capturar imagen del mapa
+    // Capturar imagen del mapa (limpia)
     const imgData = await capturarMapa();
-    const imgTag = imgData ? `<img src="${imgData}" alt="Mapa" style="max-width:100%; border:2px solid #1a4a33; border-radius:12px;" />` : '<p>No se pudo capturar la imagen del mapa.</p>';
+    const imgTag = imgData ? `<img src="${imgData}" alt="Mapa" style="max-width:100%; border:2px solid #1a4a33; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" />` : '<p>No se pudo capturar la imagen del mapa.</p>';
 
-    // 1. Solicitud formal extensa (2 páginas)
+    // 1. Solicitud formal extensa
     const solicitudHtml = `
 <!DOCTYPE html>
 <html>
@@ -1114,7 +1136,7 @@ ${volumenAnual ? `<tr><td>Volumen anual</td><td>${volumenAnual} m³</td></tr>` :
 </body>
 </html>`;
 
-    // 2. Mapa con imagen capturada
+    // 2. Mapa con imagen capturada limpia
     const mapaHtml = `
 <!DOCTYPE html>
 <html>
