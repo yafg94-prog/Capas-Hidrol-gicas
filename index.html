@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ChileAguas - Diagnóstico Georreferenciado</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -62,8 +62,9 @@
             padding: 18px 20px;
             z-index: 1500;
             border: 1px solid rgba(255,255,255,0.3);
-            max-height: 55vh;
-            overflow-y: auto;
+            max-height: 60vh;
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch;
             pointer-events: none;
             transition: all 0.3s ease;
         }
@@ -267,13 +268,13 @@
             #header .status-bar .badge { font-size: 11px; padding: 2px 10px; }
             #header { padding: 0 16px; height: 54px; }
             #map { top: 54px; }
-            #info-panel { width: 280px; left: 12px; bottom: 90px; padding: 14px 16px; }
+            #info-panel { width: 280px; left: 12px; bottom: 90px; padding: 14px 16px; max-height: 50vh; }
             #toolbar { bottom: 16px; right: 16px; gap: 10px; }
             .btn-tool { padding: 10px 18px; font-size: 13px; }
             .modal-box { padding: 20px; }
         }
         @media (max-width: 480px) {
-            #info-panel { width: calc(100% - 24px); left: 12px; bottom: 100px; max-height: 40vh; }
+            #info-panel { width: calc(100% - 24px); left: 12px; bottom: 100px; max-height: 45vh; }
             #toolbar { flex-direction: column; align-items: stretch; bottom: 12px; right: 12px; gap: 8px; }
             .btn-tool { justify-content: center; }
         }
@@ -545,7 +546,7 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
-// ============ EXTRACCIÓN DE DATOS DE CAPAS PARA EL PUNTO ============
+// ============ EXTRACCIÓN DE DATOS DE CAPAS ============
 function obtenerDatosCapaPunto(lat, lng) {
     const punto = turf.point([lng, lat]);
     const datos = {};
@@ -559,7 +560,7 @@ function obtenerDatosCapaPunto(lat, lng) {
             const resultado = analizarRelacionEspacial(punto, feature);
             if (resultado.tipo === 'poligono' && resultado.dentro) {
                 mejorFeature = feature;
-                return; // encontrado
+                return;
             } else if (resultado.tipo === 'linea' || resultado.tipo === 'punto') {
                 const dist = resultado.distancia;
                 if (dist !== null && dist < mejorDistancia && dist < 1500) {
@@ -752,7 +753,7 @@ function toggleMarker() {
     }
 }
 
-// ============ BUFFER MEJORADO (CON SCROLL) ============
+// ============ BUFFER CON SCROLL FORZADO ============
 function analizarBuffer() {
     const btnBuffer = document.getElementById('btnBuffer');
     if (btnBuffer.disabled) { alert('Primero debes obtener tu ubicación GPS.'); return; }
@@ -895,14 +896,9 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
     const lng = ultimaPosicion.lng;
     const precision = ultimaPosicion.precision;
     const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+    const fechaISO = new Date().toISOString().slice(0,10);
 
-    // Extraer datos de capas con nombres de campos robustos
-    const subcuenca = datosCapa['Subsubcuencas'] || {};
-    const restriccion = datosCapa['Restricciones'] || {};
-    const redhidro = datosCapa['Red Hidrográfica'] || {};
-    const juntas = datosCapa['Juntas de Vigilancia'] || {};
-
-    // Función helper para obtener propiedad buscando varios nombres
+    // Helper para obtener propiedades
     function getProp(obj, ...keys) {
         for (let key of keys) {
             if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
@@ -910,6 +906,8 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
         return 'No definido';
     }
 
+    const subcuenca = datosCapa['Subsubcuencas'] || {};
+    const restriccion = datosCapa['Restricciones'] || {};
     const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna');
     const provincia = getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
     const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region');
@@ -920,7 +918,6 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
     const tipoRestriccion = getProp(restriccion, 'TIPO', 'NOMBRE', 'Sin restricción');
     const objectid = getProp(restriccion, 'OBJECTID', 'ID');
 
-    // Determinar tipo de restricción
     let restriccionTexto = 'No se encuentra en área de restricción o prohibición.';
     let restriccionClase = '';
     if (tipoRestriccion && (tipoRestriccion.toLowerCase().includes('restricción') || tipoRestriccion.toLowerCase().includes('restriccion'))) {
@@ -931,7 +928,7 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
         restriccionClase = 'prohibicion';
     }
 
-    // 1. Solicitud formal (completa)
+    // 1. Solicitud formal robusta (similar al ejemplo)
     const solicitudHtml = `
 <!DOCTYPE html>
 <html>
@@ -939,20 +936,36 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
 <style>
 body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; font-size: 12pt; }
 h1 { font-size: 16pt; text-align: center; text-transform: uppercase; }
+h2 { font-size: 14pt; margin-top: 20px; }
+h3 { font-size: 13pt; margin-top: 15px; }
 .destinatario { margin: 20px 0; }
-.datos { margin: 20px 0; }
-.firma { margin-top: 40px; }
-.tabla { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.tabla { width: 100%; border-collapse: collapse; margin: 12px 0; }
 .tabla td { padding: 6px 12px; border: 1px solid #ccc; }
 .tabla td:first-child { font-weight: 600; width: 30%; }
+.firma { margin-top: 40px; }
+.otrosi { margin-top: 20px; }
+.page-break { page-break-before: always; }
 </style>
 </head>
 <body>
 <h1>SOLICITUD DE DERECHO DE APROVECHAMIENTO DE AGUAS ${fuente.toUpperCase()}</h1>
-<p>${solicitante}${rut ? ', RUT N° '+rut : ''}, ${domicilio ? 'domiciliado en '+domicilio : ''}${email ? ', correo electrónico '+email : ''}, al Sr. Director General de Aguas, respetuosamente solicita:</p>
-<p>Con el objeto de ${uso}, solicito un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} de carácter ${caracter}, por un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, sobre las aguas ${fuente.toLowerCase()}s ubicadas en la comuna de ${comuna}, provincia de ${provincia}, región de ${region}.</p>
-<p>La captación se realizará por ${fuente === 'Subterránea' ? 'elevación mecánica' : 'gravitación'} desde un punto definido por las coordenadas UTM (m) Norte: ${lat.toFixed(3)}, Este: ${lng.toFixed(3)}, Huso 19, Datum WGS84.</p>
+<p><b>${solicitante}</b>${rut ? ', RUT N° '+rut : ''}, ${domicilio ? 'domiciliado en '+domicilio : ''}${email ? ', correo electrónico '+email : ''}, al Sr. Director General de Aguas, respetuosamente digo:</p>
+
+<h2>I. DERECHO DE APROVECHAMIENTO QUE SE SOLICITA</h2>
+<p>Que, en virtud del artículo 19 número 24 de la Constitución Política de la República, artículos 130 y siguientes del Código de Aguas, vengo en solicitar un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} de carácter ${caracter}, por un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, para ser destinado a ${uso}.</p>
+
+<h2>II. UBICACIÓN Y PUNTO DE CAPTACIÓN</h2>
+<p>Las aguas se captarán por ${fuente === 'Subterránea' ? 'elevación mecánica' : 'gravitación'} desde un punto definido por las coordenadas UTM (metros) Norte: ${lat.toFixed(3)}, Este: ${lng.toFixed(3)}, Huso 19, Datum WGS84, en la comuna de ${comuna}, provincia de ${provincia}, región de ${region}.</p>
 <p>Se solicita además un radio de protección de 200 metros con centro en el punto de captación.</p>
+
+<h2>III. ANTECEDENTES TÉCNICOS Y LEGALES</h2>
+<table class="tabla">
+<tr><td>Cuenca</td><td>${cuenca}</td></tr>
+<tr><td>Subcuenca</td><td>${subcuencaNombre}</td></tr>
+<tr><td>Acuífero</td><td>${acuifero}</td></tr>
+<tr><td>SHAC</td><td>${shac}</td></tr>
+<tr><td>Situación de restricción</td><td>${restriccionTexto}</td></tr>
+</table>
 <p>Se acompaña la siguiente documentación:</p>
 <ul>
   <li>Memoria explicativa</li>
@@ -960,15 +973,34 @@ h1 { font-size: 16pt; text-align: center; text-transform: uppercase; }
   <li>Certificado de dominio del predio (si aplica)</li>
   <li>Prueba de bombeo (si aplica)</li>
 </ul>
-<p>POR TANTO, solicito se tenga por presentada la solicitud y se proceda a su admisibilidad y tramitación conforme a derecho.</p>
+
+<h2>IV. ANÁLISIS DE DISPONIBILIDAD Y AFECTACIÓN A TERCEROS</h2>
+<p>Según los antecedentes técnicos disponibles, el caudal solicitado es compatible con la oferta hídrica de la zona y no se perjudican derechos de terceros, por cuanto la captación se ubica en el mismo sector hidrogeológico y se respetan los caudales ecológicos.</p>
+
+<div class="page-break"></div>
+<h2>V. PETICIÓN</h2>
+<p>POR TANTO, solicito a Usted tener por presentada la presente solicitud y, en definitiva, otorgar el derecho de aprovechamiento de aguas ${fuente.toLowerCase()} conforme a lo expuesto.</p>
+
 <div class="firma">
 <p>${solicitante}</p>
 <p>Fecha: ${fecha}</p>
 </div>
+
+<h2>PRIMER OTROSÍ:</h2>
+<p>Acompaño los siguientes documentos: (señalar según corresponda)</p>
+<ul>
+  <li>Copia de inscripción social (si persona jurídica)</li>
+  <li>Certificado de dominio del predio</li>
+  <li>Planos y croquis</li>
+</ul>
+
+<h2>SEGUNDO OTROSÍ:</h2>
+<p>Sírvase tener presente que mi personería y representación constan en escritura pública de fecha ..., cuya copia se acompaña.</p>
+
 </body>
 </html>`;
 
-    // 2. Mapa con imagen estática (intentamos con OSM, si falla mostramos enlace)
+    // 2. Mapa con imagen (usando staticmap de OSM)
     const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=600x400&maptype=mapnik&markers=${lat},${lng},ol-marker`;
     const osmLink = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=15`;
     const mapaHtml = `
@@ -986,13 +1018,14 @@ h2 { color: #1a4a33; }
 <p><b>Coordenadas UTM (WGS84, Huso 19):</b> Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}</p>
 <img src="${staticMapUrl}" alt="Mapa" onerror="this.style.display='none'; document.getElementById('fallback').style.display='block';" />
 <div id="fallback" style="display:none; background:#f8d7da; padding:20px; border-radius:8px; margin:20px 0;">
-  <p>No se pudo cargar la imagen del mapa. Puedes ver la ubicación en <a href="${osmLink}" target="_blank">OpenStreetMap</a>.</p>
+  <p>No se pudo cargar la imagen del mapa automáticamente.</p>
+  <p><a href="${osmLink}" target="_blank" style="font-weight:bold; color:#1a4a33;">Abrir ubicación en OpenStreetMap</a></p>
 </div>
 <p><small>Mapa generado con OpenStreetMap - ${fecha}</small></p>
 </body>
 </html>`;
 
-    // 3. Memoria explicativa (completa con todos los datos)
+    // 3. Memoria explicativa mejorada
     const memoriaHtml = `
 <!DOCTYPE html>
 <html>
@@ -1037,27 +1070,26 @@ h3 { color: #1d6b44; margin-top: 24px; border-left: 6px solid #2d5a3f; padding-l
 </div>
 
 <div class="seccion">
-<h3>3. Disponibilidad del recurso hídrico</h3>
-<p>Según los antecedentes técnicos disponibles (pruebas de bombeo, aforos y estudios hidrológicos), el caudal solicitado de ${caudal} L/s es compatible con la oferta hídrica de la zona. El punto de captación se encuentra en el mismo acuífero/sector hidrogeológico y no se han identificado restricciones de disponibilidad que impidan el otorgamiento del derecho.</p>
+<h3>3. Disponibilidad del recurso</h3>
+<p>Según antecedentes técnicos, el caudal solicitado es compatible con la oferta hídrica de la zona. El punto de captación se ubica en el mismo acuífero, por lo que no se generará afectación a derechos de terceros.</p>
 </div>
 
 <div class="seccion">
-<h3>4. Análisis de restricciones y áreas protegidas</h3>
+<h3>4. Análisis de restricciones</h3>
 <div class="alert ${restriccionClase || 'ok'}">
 ${restriccionTexto}
 </div>
-<p>Además, se ha verificado que no existen derechos de terceros que puedan verse afectados por la nueva captación, y que el punto se encuentra en el mismo sector hidrogeológico de aprovechamiento común.</p>
 </div>
 
 <div class="seccion">
-<h3>5. Justificación del caudal solicitado</h3>
-<p>El caudal de ${caudal} L/s es necesario para satisfacer los requerimientos de ${uso}. Se ha calculado en base a las necesidades del proyecto, considerando eficiencia de riego (si aplica), consumo humano o procesos productivos.</p>
+<h3>5. Justificación del caudal</h3>
+<p>El caudal de ${caudal} L/s es necesario para ${uso}. Se ha calculado considerando eficiencia de riego, consumo humano o procesos productivos.</p>
 <p>${observaciones || 'Sin observaciones adicionales.'}</p>
 </div>
 
 <div class="seccion">
 <h3>6. Conclusiones</h3>
-<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación del cambio de punto de captación (o concesión) conforme a la normativa vigente (artículos 130 y siguientes del Código de Aguas).</p>
+<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación conforme a la normativa vigente.</p>
 </div>
 </body>
 </html>`;
@@ -1076,7 +1108,7 @@ h2 { text-align: center; text-transform: uppercase; }
 <h2>EXTRACTO</h2>
 <p>${solicitante}${rut ? ', RUT N° '+rut : ''}, solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, de carácter ${caracter}. Captación desde punto definido por coordenadas UTM (m) Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}, Huso 19, Datum WGS84, en la comuna de ${comuna}, provincia de ${provincia}, región de ${region}.</p>
 <p>Fecha: ${fecha}</p>
-<p>Cualquier oposición deberá presentarse dentro del plazo legal establecido en el Código de Aguas.</p>
+<p>Cualquier oposición deberá presentarse dentro del plazo legal.</p>
 </body>
 </html>`;
 
