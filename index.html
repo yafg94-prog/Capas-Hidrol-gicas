@@ -7,11 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* ---------- RESET Y BASE ---------- */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
             background: #eef2f5;
@@ -35,37 +31,11 @@
             z-index: 2000;
             border-bottom: 2px solid #3b9e6d;
         }
-        #header .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        #header .logo-icon {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
-        #header h1 {
-            color: #fff;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-shadow: 0 2px 3px rgba(0,0,0,0.3);
-        }
-        #header h1 small {
-            font-size: 14px;
-            font-weight: 300;
-            color: #b8e0c8;
-            margin-left: 8px;
-        }
-        #header .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            color: #cde8da;
-            font-size: 14px;
-            font-weight: 400;
-        }
+        #header .logo-area { display: flex; align-items: center; gap: 12px; }
+        #header .logo-icon { width: 40px; height: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        #header h1 { color: #fff; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 2px 3px rgba(0,0,0,0.3); }
+        #header h1 small { font-size: 14px; font-weight: 300; color: #b8e0c8; margin-left: 8px; }
+        #header .status-bar { display: flex; align-items: center; gap: 18px; color: #cde8da; font-size: 14px; font-weight: 400; }
         #header .status-bar .badge {
             background: rgba(255,255,255,0.10);
             padding: 4px 12px;
@@ -75,24 +45,9 @@
             align-items: center;
             gap: 6px;
         }
-        #header .status-bar .badge.gps-on {
-            background: #1f8b4c;
-            border-color: #55c98d;
-            color: #fff;
-        }
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #e74c3c;
-            margin-right: 6px;
-            transition: background 0.3s;
-        }
-        .status-dot.active {
-            background: #2ecc71;
-            box-shadow: 0 0 8px #2ecc71;
-        }
+        #header .status-bar .badge.gps-on { background: #1f8b4c; border-color: #55c98d; color: #fff; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e74c3c; margin-right: 6px; transition: background 0.3s; }
+        .status-dot.active { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
         .btn-header {
             background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.25);
@@ -108,14 +63,8 @@
             gap: 8px;
             backdrop-filter: blur(2px);
         }
-        .btn-header:hover {
-            background: rgba(255,255,255,0.25);
-            border-color: #55c98d;
-        }
-        .btn-header:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .btn-header:hover { background: rgba(255,255,255,0.25); border-color: #55c98d; }
+        .btn-header:disabled { opacity: 0.5; cursor: not-allowed; }
         /* ---------- PANEL DE INFORMACIÓN ---------- */
         #info-panel {
             position: absolute;
@@ -130,14 +79,12 @@
             padding: 18px 20px;
             z-index: 1500;
             border: 1px solid rgba(255,255,255,0.3);
-            max-height: 55vh;
+            max-height: 60vh;
             overflow-y: auto;
             pointer-events: none;
             transition: all 0.3s ease;
         }
-        #info-panel.active {
-            pointer-events: auto;
-        }
+        #info-panel.active { pointer-events: auto; }
         #info-panel .panel-header {
             display: flex;
             align-items: center;
@@ -151,14 +98,7 @@
             z-index: 2;
             backdrop-filter: blur(4px);
         }
-        #info-panel .panel-title {
-            font-weight: 700;
-            color: #1a3c2e;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        #info-panel .panel-title { font-weight: 700; color: #1a3c2e; font-size: 16px; display: flex; align-items: center; gap: 8px; }
         #info-panel .panel-title .badge-estado {
             background: #2d5a3f;
             color: #fff;
@@ -169,20 +109,8 @@
             font-weight: 600;
             letter-spacing: 0.3px;
         }
-        #info-panel .panel-accion {
-            background: none;
-            border: none;
-            color: #4a6a5a;
-            font-size: 20px;
-            cursor: pointer;
-            transition: 0.2s;
-            padding: 0 6px;
-            line-height: 1;
-        }
-        #info-panel .panel-accion:hover {
-            color: #c0392b;
-            transform: scale(1.1);
-        }
+        #info-panel .panel-accion { background: none; border: none; color: #4a6a5a; font-size: 20px; cursor: pointer; transition: 0.2s; padding: 0 6px; line-height: 1; }
+        #info-panel .panel-accion:hover { color: #c0392b; transform: scale(1.1); }
         #info-panel .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -190,21 +118,9 @@
             font-size: 13px;
             margin-bottom: 12px;
         }
-        #info-panel .info-grid .label {
-            color: #4a6a5a;
-            font-weight: 500;
-        }
-        #info-panel .info-grid .value {
-            color: #0d2b1e;
-            font-weight: 600;
-            text-align: right;
-            font-family: 'Courier New', monospace;
-        }
-        #info-panel .buffer-result {
-            margin-top: 12px;
-            border-top: 2px dashed #dce6e0;
-            padding-top: 14px;
-        }
+        #info-panel .info-grid .label { color: #4a6a5a; font-weight: 500; }
+        #info-panel .info-grid .value { color: #0d2b1e; font-weight: 600; text-align: right; font-family: 'Courier New', monospace; }
+        #info-panel .buffer-result { margin-top: 12px; border-top: 2px dashed #dce6e0; padding-top: 14px; }
         #info-panel .buffer-result .buffer-titulo {
             font-weight: 700;
             color: #1a4a33;
@@ -222,7 +138,6 @@
             font-size: 12px;
             line-height: 24px;
         }
-        /* Tarjetas de elementos del buffer */
         .elemento-card {
             background: #f8faf9;
             border-radius: 12px;
@@ -232,17 +147,8 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.04);
             transition: 0.2s;
         }
-        .elemento-card:hover {
-            background: #f0f6f3;
-        }
-        .elemento-card .capa-nombre {
-            font-weight: 700;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
-        }
+        .elemento-card:hover { background: #f0f6f3; }
+        .elemento-card .capa-nombre { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
         .elemento-card .distancia {
             display: inline-block;
             background: #f39c12;
@@ -254,24 +160,9 @@
             line-height: 22px;
             margin-right: 6px;
         }
-        .elemento-card .props {
-            font-size: 12px;
-            color: #2c3e50;
-            margin-top: 4px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px 12px;
-        }
-        .elemento-card .props span {
-            background: #eef2f5;
-            padding: 0 8px;
-            border-radius: 4px;
-            line-height: 20px;
-        }
-        .elemento-card .props .prop-clave {
-            font-weight: 600;
-            color: #1a4a33;
-        }
+        .elemento-card .props { font-size: 12px; color: #2c3e50; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+        .elemento-card .props span { background: #eef2f5; padding: 0 8px; border-radius: 4px; line-height: 20px; }
+        .elemento-card .props .prop-clave { font-weight: 600; color: #1a4a33; }
         .color-subcuenca { border-left-color: #e74c3c; }
         .color-juntas { border-left-color: #2980b9; }
         .color-redhidro { border-left-color: #00bcd4; }
@@ -306,46 +197,17 @@
             font-family: inherit;
             letter-spacing: 0.3px;
         }
-        .btn-tool:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-            background: #ffffff;
-        }
-        .btn-tool:active:not(:disabled) {
-            transform: translateY(0px);
-        }
-        .btn-tool:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            filter: grayscale(0.3);
-        }
-        .btn-tool.primary {
-            background: linear-gradient(145deg, #1d6b44, #2d8f5a);
-            color: white;
-            border-color: #3b9e6d;
-        }
-        .btn-tool.primary:hover:not(:disabled) {
-            background: linear-gradient(145deg, #268053, #35a06a);
-        }
-        .btn-tool.secondary {
-            background: rgba(30, 60, 50, 0.85);
-            color: white;
-            border-color: #4a7a5a;
-        }
-        .btn-tool.secondary:hover:not(:disabled) {
-            background: rgba(30, 60, 50, 0.95);
-        }
-        .btn-tool .icon {
-            font-size: 20px;
-        }
+        .btn-tool:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); background: #ffffff; }
+        .btn-tool:active:not(:disabled) { transform: translateY(0px); }
+        .btn-tool:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(0.3); }
+        .btn-tool.primary { background: linear-gradient(145deg, #1d6b44, #2d8f5a); color: white; border-color: #3b9e6d; }
+        .btn-tool.primary:hover:not(:disabled) { background: linear-gradient(145deg, #268053, #35a06a); }
+        .btn-tool.secondary { background: rgba(30, 60, 50, 0.85); color: white; border-color: #4a7a5a; }
+        .btn-tool.secondary:hover:not(:disabled) { background: rgba(30, 60, 50, 0.95); }
+        .btn-tool .icon { font-size: 20px; }
         /* ---------- MAPA ---------- */
-        #map {
-            position: absolute;
-            top: 60px;
-            bottom: 0;
-            width: 100%;
-        }
-        /* ---------- POPUPS ESTILIZADOS ---------- */
+        #map { position: absolute; top: 60px; bottom: 0; width: 100%; }
+        /* ---------- POPUPS ---------- */
         .leaflet-popup-content-wrapper {
             border-radius: 16px !important;
             box-shadow: 0 8px 28px rgba(0,0,0,0.20) !important;
@@ -353,20 +215,9 @@
             backdrop-filter: blur(4px) !important;
             border-left: 6px solid #2d5a3f;
         }
-        .leaflet-popup-content {
-            font-size: 13px;
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            color: #1a2e24;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 6px 2px;
-        }
-        .leaflet-popup-content b {
-            color: #1a4a33;
-        }
-        .leaflet-popup-tip {
-            background: rgba(255,255,255,0.95) !important;
-        }
+        .leaflet-popup-content { font-size: 13px; font-family: 'Segoe UI', Roboto, sans-serif; color: #1a2e24; max-height: 300px; overflow-y: auto; padding: 6px 2px; }
+        .leaflet-popup-content b { color: #1a4a33; }
+        .leaflet-popup-tip { background: rgba(255,255,255,0.95) !important; }
         /* ---------- CONTROL DE CAPAS ---------- */
         .leaflet-control-layers {
             background: rgba(255,255,255,0.92) !important;
@@ -376,14 +227,9 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             padding: 6px 0;
         }
-        .leaflet-control-layers label {
-            font-weight: 500;
-            padding: 4px 12px;
-        }
-        .leaflet-control-layers label:hover {
-            background: #f0f6f3;
-        }
-        /* ---------- MODAL SOLICITUD ---------- */
+        .leaflet-control-layers label { font-weight: 500; padding: 4px 12px; }
+        .leaflet-control-layers label:hover { background: #f0f6f3; }
+        /* ---------- MODAL ---------- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -397,9 +243,7 @@
             align-items: center;
             justify-content: center;
         }
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
         .modal-box {
             background: white;
             border-radius: 24px;
@@ -411,25 +255,9 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.4);
             position: relative;
         }
-        .modal-box h2 {
-            color: #1a4a33;
-            border-bottom: 2px solid #2d5a3f;
-            padding-bottom: 12px;
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .modal-box .campo {
-            margin-bottom: 18px;
-        }
-        .modal-box label {
-            display: block;
-            font-weight: 600;
-            color: #1a3c2e;
-            margin-bottom: 4px;
-            font-size: 14px;
-        }
+        .modal-box h2 { color: #1a4a33; border-bottom: 2px solid #2d5a3f; padding-bottom: 12px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+        .modal-box .campo { margin-bottom: 18px; }
+        .modal-box label { display: block; font-weight: 600; color: #1a3c2e; margin-bottom: 4px; font-size: 14px; }
         .modal-box input, .modal-box select, .modal-box textarea {
             width: 100%;
             padding: 12px 14px;
@@ -440,45 +268,14 @@
             transition: border 0.2s;
             background: #f8faf9;
         }
-        .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus {
-            border-color: #2d5a3f;
-            outline: none;
-            background: #fff;
-        }
-        .modal-box textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        .modal-box .acciones {
-            display: flex;
-            gap: 14px;
-            margin-top: 24px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-        .modal-box .acciones button {
-            padding: 12px 28px;
-            border: none;
-            border-radius: 60px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .modal-box .acciones .btn-cerrar {
-            background: #eef2f5;
-            color: #1a3c2e;
-        }
-        .modal-box .acciones .btn-cerrar:hover {
-            background: #dce6e0;
-        }
-        .modal-box .acciones .btn-generar {
-            background: linear-gradient(145deg, #1d6b44, #2d8f5a);
-            color: white;
-        }
-        .modal-box .acciones .btn-generar:hover {
-            background: linear-gradient(145deg, #268053, #35a06a);
-        }
+        .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { border-color: #2d5a3f; outline: none; background: #fff; }
+        .modal-box textarea { min-height: 80px; resize: vertical; }
+        .modal-box .acciones { display: flex; gap: 14px; margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
+        .modal-box .acciones button { padding: 12px 28px; border: none; border-radius: 60px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s; }
+        .modal-box .acciones .btn-cerrar { background: #eef2f5; color: #1a3c2e; }
+        .modal-box .acciones .btn-cerrar:hover { background: #dce6e0; }
+        .modal-box .acciones .btn-generar { background: linear-gradient(145deg, #1d6b44, #2d8f5a); color: white; }
+        .modal-box .acciones .btn-generar:hover { background: linear-gradient(145deg, #268053, #35a06a); }
         /* ---------- RESPONSIVE ---------- */
         @media (max-width: 768px) {
             #header h1 small { display: none; }
@@ -603,6 +400,14 @@
                 <input type="number" id="volumen" placeholder="Ej: 1000000" step="1">
             </div>
             <div class="campo">
+                <label for="domicilio">Domicilio (opcional)</label>
+                <input type="text" id="domicilio" placeholder="Calle y número, comuna">
+            </div>
+            <div class="campo">
+                <label for="email">Correo electrónico (opcional)</label>
+                <input type="email" id="email" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="campo">
                 <label for="observaciones">Observaciones / Justificación</label>
                 <textarea id="observaciones" placeholder="Describa el uso, ubicación exacta, etc."></textarea>
             </div>
@@ -636,7 +441,6 @@ let puntoUbicacion = null;
 let circuloPrecision = null;
 let watcherID = null;
 let bufferCircle = null;
-let bufferPopupMarker = null;
 let ultimaPosicion = null;
 let marcadorVisible = true;
 
@@ -764,30 +568,24 @@ function obtenerDatosCapaPunto(lat, lng) {
 
     capasCargadas.forEach(item => {
         const nombre = item.nombre;
-        let encontrado = false;
-        // Buscar primer elemento que intersecte (polígono) o más cercano (línea/punto)
         let mejorDistancia = Infinity;
         let mejorFeature = null;
 
         item.geojson.features.forEach(feature => {
             const resultado = analizarRelacionEspacial(punto, feature);
             if (resultado.tipo === 'poligono' && resultado.dentro) {
-                // Si es polígono y contiene el punto, lo tomamos inmediatamente
                 mejorFeature = feature;
-                encontrado = true;
-                // no break porque puede haber varios, pero tomamos el primero
-                return;
+                return; // encontrado
             } else if (resultado.tipo === 'linea' || resultado.tipo === 'punto') {
                 const dist = resultado.distancia;
-                if (dist !== null && dist < mejorDistancia && dist < 1500) { // radio de búsqueda 1.5km
+                if (dist !== null && dist < mejorDistancia && dist < 1500) {
                     mejorDistancia = dist;
                     mejorFeature = feature;
-                    encontrado = true;
                 }
             }
         });
 
-        if (encontrado && mejorFeature) {
+        if (mejorFeature) {
             datos[nombre] = mejorFeature.properties;
         }
     });
@@ -893,7 +691,7 @@ function actualizarMarcador(posicion, volar = false) {
     document.getElementById('panelBadge').textContent = '📍 Ubicación fijada';
     document.getElementById('panelBadge').style.background = '#2d5a3f';
 
-    // Popup con detalles del punto
+    // Popup con detalles del punto (opcional)
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
                           <b>Lat:</b> ${lat.toFixed(6)} <b>Lng:</b> ${lng.toFixed(6)}<br>
@@ -970,7 +768,7 @@ function toggleMarker() {
     }
 }
 
-// ============ BUFFER MEJORADO ============
+// ============ BUFFER MEJORADO (SIN POPUP DUPLICADO) ============
 function analizarBuffer() {
     const btnBuffer = document.getElementById('btnBuffer');
     if (btnBuffer.disabled) { alert('Primero debes obtener tu ubicación GPS.'); return; }
@@ -1086,35 +884,9 @@ function analizarBuffer() {
         }
 
         areaResult.innerHTML = bufferHTML;
-
-        // Popup en el mapa (también mejorado)
-        if (bufferPopupMarker) map.removeLayer(bufferPopupMarker);
-        bufferPopupMarker = L.marker([lat, lng], {
-            icon: L.divIcon({ className: 'pin-marcador', html: '', iconSize: [0,0] })
-        }).addTo(map);
-        let popupContent = `<b>🔵 Buffer de ${radio} m</b><br><small>Centro: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><hr>`;
-        if (capasResultados.length === 0) {
-            popupContent += '<i>No se encontraron elementos dentro del buffer.</i>';
-        } else {
-            capasResultados.forEach(capaRes => {
-                popupContent += `<b>📁 ${capaRes.nombre} (${capaRes.cantidad} elementos)</b><br>`;
-                capaRes.elementos.forEach(elem => {
-                    const props = elem.feature.properties;
-                    popupContent += `<div style="margin-left:15px; font-size:12px;">`;
-                    if (elem.distancia !== null) popupContent += `🔹 Distancia: <b style="color:#e67e22;">${Math.round(elem.distancia)} m</b><br>`;
-                    let count = 0;
-                    for (let prop in props) {
-                        if (count++ < 4) popupContent += `• <b>${prop}:</b> ${props[prop]}<br>`;
-                    }
-                    if (Object.keys(props).length > 4) popupContent += `• ... (más en el panel)<br>`;
-                    popupContent += `</div>`;
-                });
-                popupContent += '<br>';
-            });
-            popupContent += `<b>✅ Total de elementos: ${totalFeaturesEnBuffer}</b>`;
-        }
-        bufferPopupMarker.bindPopup(popupContent, { maxWidth: 400, maxHeight: 500 });
-        bufferPopupMarker.openPopup();
+        // Forzar scroll al final del panel
+        const panel = document.getElementById('info-panel');
+        panel.scrollTop = panel.scrollHeight;
 
         map.fitBounds(bufferCircle.getBounds(), { padding: [50, 50] });
 
@@ -1132,8 +904,8 @@ function restablecerBotonBuffer() {
     btn.disabled = false;
 }
 
-// ============ GENERACIÓN DE DOCUMENTOS ============
-function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumenAnual, observaciones, datosCapa) {
+// ============ GENERACIÓN DE DOCUMENTOS MEJORADOS ============
+function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumenAnual, observaciones, datosCapa, domicilio, email) {
     const lat = ultimaPosicion.lat;
     const lng = ultimaPosicion.lng;
     const precision = ultimaPosicion.precision;
@@ -1151,35 +923,51 @@ function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volu
     const tipoRestriccion = restriccion.TIPO || restriccion.NOMBRE || 'Sin restricción';
     const acuifero = subcuenca.NOM_ACUIF || 'No definido';
     const sectorHidro = subcuenca.SECTOR_HIDRO || 'No definido';
+    const comuna = subcuenca.COMUNA || '[comuna]';
+    const provincia = subcuenca.PROVINCIA || '[provincia]';
+    const region = subcuenca.REGION || '[región]';
 
-    // Determinar si es zona de restricción o prohibición
+    // Determinar tipo de restricción
     let restriccionTexto = 'No se encuentra en área de restricción o prohibición.';
-    if (restriccion.TIPO && restriccion.TIPO.toLowerCase().includes('restricción')) {
+    let restriccionClase = '';
+    if (tipoRestriccion && (tipoRestriccion.toLowerCase().includes('restricción') || tipoRestriccion.toLowerCase().includes('restriccion'))) {
         restriccionTexto = 'El punto se encuentra en un Área de Restricción. Solo es posible otorgar derechos provisionales.';
-    } else if (restriccion.TIPO && restriccion.TIPO.toLowerCase().includes('prohibición')) {
+        restriccionClase = 'restriccion';
+    } else if (tipoRestriccion && (tipoRestriccion.toLowerCase().includes('prohibición') || tipoRestriccion.toLowerCase().includes('prohibicion'))) {
         restriccionTexto = 'El punto se encuentra en una Zona de Prohibición. No es posible otorgar nuevos derechos.';
+        restriccionClase = 'prohibicion';
     }
 
-    // --- Documento 1: Solicitud formal ---
+    // 1. Solicitud formal (más robusta, similar al ejemplo)
     const solicitudHtml = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Solicitud formal</title>
 <style>
-body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-h1 { font-size: 18px; text-align: center; text-transform: uppercase; }
+body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; font-size: 12pt; }
+h1 { font-size: 16pt; text-align: center; text-transform: uppercase; }
 .destinatario { margin: 20px 0; }
 .datos { margin: 20px 0; }
 .firma { margin-top: 40px; }
+.tabla-datos { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.tabla-datos td { padding: 6px 12px; border: 1px solid #ccc; }
+.tabla-datos td:first-child { font-weight: 600; width: 30%; }
+@media print { body { margin: 0; } }
 </style>
 </head>
 <body>
 <h1>SOLICITUD DE DERECHO DE APROVECHAMIENTO DE AGUAS ${fuente.toUpperCase()}</h1>
-<p><b>${solicitante}</b>, ${rut ? 'RUT '+rut : ''}, con domicilio para estos efectos en [dirección], correo electrónico [correo], al Sr. Director General de Aguas, respetuosamente solicita:</p>
-<p>Con el objeto de ${uso}, solicito un derecho de aprovechamiento de aguas ${fuente.toLowerCase()}, de carácter ${caracter}, por un caudal de ${caudal} L/s${volumenAnual ? ', y un volumen anual de '+volumenAnual+' m³' : ''}, sobre las aguas ${fuente.toLowerCase()}s ubicadas en la comuna de [comuna], provincia de [provincia], región de [región].</p>
+<p>${solicitante}, ${rut ? 'RUT N° '+rut : ''}, ${domicilio ? 'domiciliado en '+domicilio : ''}, ${email ? 'correo electrónico '+email : ''}, al Sr. Director General de Aguas, respetuosamente solicita:</p>
+<p>Con el objeto de ${uso}, solicito un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} de carácter ${caracter}, por un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, sobre las aguas ${fuente.toLowerCase()}s ubicadas en la comuna de ${comuna}, provincia de ${provincia}, región de ${region}.</p>
 <p>La captación se realizará por ${fuente === 'Subterránea' ? 'elevación mecánica' : 'gravitación'} desde un punto definido por las coordenadas UTM (m) Norte: ${lat.toFixed(3)}, Este: ${lng.toFixed(3)}, Huso 19, Datum WGS84.</p>
-<p>Se adjunta memoria explicativa y demás antecedentes técnicos.</p>
-<p>POR TANTO, solicito se tenga por presentada la solicitud y se proceda conforme a derecho.</p>
+<p>Se acompaña la siguiente documentación:</p>
+<ul>
+  <li>Memoria explicativa</li>
+  <li>Plano de ubicación</li>
+  <li>Certificado de dominio del predio (si aplica)</li>
+  <li>Prueba de bombeo (si aplica)</li>
+</ul>
+<p>POR TANTO, solicito se tenga por presentada la solicitud y se proceda a su admisibilidad y tramitación conforme a derecho.</p>
 <div class="firma">
 <p>${solicitante}</p>
 <p>Fecha: ${fecha}</p>
@@ -1187,7 +975,7 @@ h1 { font-size: 18px; text-align: center; text-transform: uppercase; }
 </body>
 </html>`;
 
-    // --- Documento 2: Mapa (página con imagen estática) ---
+    // 2. Mapa con imagen estática (se usa servicio OSM)
     const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=600x400&maptype=mapnik&markers=${lat},${lng},ol-marker`;
     const mapaHtml = `
 <!DOCTYPE html>
@@ -1195,108 +983,142 @@ h1 { font-size: 18px; text-align: center; text-transform: uppercase; }
 <head><meta charset="utf-8"><title>Mapa de ubicación</title>
 <style>
 body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; text-align: center; }
-img { max-width: 100%; border: 1px solid #ccc; border-radius: 8px; }
+img { max-width: 100%; border: 2px solid #1a4a33; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+h2 { color: #1a4a33; }
 </style>
 </head>
 <body>
-<h2>Ubicación del punto de captación</h2>
-<p>Coordenadas UTM (WGS84, Huso 19): Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}</p>
+<h2>📍 Ubicación del punto de captación</h2>
+<p><b>Coordenadas UTM (WGS84, Huso 19):</b> Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}</p>
 <img src="${staticMapUrl}" alt="Mapa" />
-<p><small>Mapa generado con OpenStreetMap</small></p>
+<p><small>Mapa generado con OpenStreetMap - ${fecha}</small></p>
 </body>
 </html>`;
 
-    // --- Documento 3: Memoria explicativa/técnica ---
+    // 3. Memoria explicativa (colorida y con más secciones)
     const memoriaHtml = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Memoria explicativa</title>
 <style>
-body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-h2 { color: #1a4a33; }
-.seccion { margin: 20px 0; }
+body { font-family: 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 30px; line-height: 1.6; background: #fafcfb; }
+h2 { color: #1a4a33; border-bottom: 4px solid #2d5a3f; padding-bottom: 8px; }
+h3 { color: #1d6b44; margin-top: 24px; border-left: 6px solid #2d5a3f; padding-left: 12px; }
+.seccion { background: #ffffff; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin: 20px 0; }
+.tabla { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.tabla td { padding: 8px 12px; border-bottom: 1px solid #e0e8e3; }
+.tabla td:first-child { font-weight: 600; width: 30%; color: #1a4a33; }
+.alert { padding: 12px 16px; border-radius: 8px; }
+.alert.restriccion { background: #fff3cd; border-left: 6px solid #f39c12; }
+.alert.prohibicion { background: #f8d7da; border-left: 6px solid #e74c3c; }
+.alert.ok { background: #d4edda; border-left: 6px solid #27ae60; }
 </style>
 </head>
 <body>
-<h2>MEMORIA EXPLICATIVA</h2>
+<h2>📄 MEMORIA EXPLICATIVA</h2>
 <p><b>Solicitante:</b> ${solicitante} (${rut || 'sin RUT'})</p>
 <p><b>Fecha:</b> ${fecha}</p>
 
 <div class="seccion">
 <h3>1. Descripción del proyecto</h3>
-<p>Se solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s, de carácter ${caracter}.</p>
+<p>Se solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, de carácter ${caracter}.</p>
 </div>
 
 <div class="seccion">
-<h3>2. Ubicación</h3>
-<p>Coordenadas UTM (WGS84, Huso 19): Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}.</p>
-<p>Comuna: ${subcuenca.COMUNA || 'No determinada'}</p>
-<p>Cuenca: ${cuenca}</p>
-<p>Subcuenca: ${subcuencaNombre}</p>
-<p>Acuífero: ${acuifero}</p>
-<p>Sector hidrogeológico: ${sectorHidro}</p>
-<p>SHAC: ${shac}</p>
+<h3>2. Ubicación y georreferenciación</h3>
+<table class="tabla">
+<tr><td>Coordenadas UTM (WGS84, Huso 19)</td><td>Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}</td></tr>
+<tr><td>Comuna</td><td>${comuna}</td></tr>
+<tr><td>Provincia</td><td>${provincia}</td></tr>
+<tr><td>Región</td><td>${region}</td></tr>
+<tr><td>Cuenca</td><td>${cuenca}</td></tr>
+<tr><td>Subcuenca</td><td>${subcuencaNombre}</td></tr>
+<tr><td>Acuífero</td><td>${acuifero}</td></tr>
+<tr><td>Sector hidrogeológico</td><td>${sectorHidro}</td></tr>
+<tr><td>SHAC</td><td>${shac}</td></tr>
+<tr><td>Precisión GPS</td><td>~${Math.round(precision)} m</td></tr>
+</table>
 </div>
 
 <div class="seccion">
-<h3>3. Disponibilidad del recurso</h3>
-<p>Según los antecedentes técnicos disponibles, el caudal solicitado es compatible con la oferta hídrica de la zona. Se ha verificado la existencia de agua en el punto de captación mediante pruebas de bombeo (o aforos) que avalan el caudal requerido.</p>
+<h3>3. Disponibilidad del recurso hídrico</h3>
+<p>Según los antecedentes técnicos disponibles (pruebas de bombeo, aforos y estudios hidrológicos), el caudal solicitado de ${caudal} L/s es compatible con la oferta hídrica de la zona. El punto de captación se encuentra en el mismo acuífero/sector hidrogeológico y no se han identificado restricciones de disponibilidad que impidan el otorgamiento del derecho.</p>
 </div>
 
 <div class="seccion">
-<h3>4. Análisis de restricciones</h3>
-<p>${restriccionTexto}</p>
+<h3>4. Análisis de restricciones y áreas protegidas</h3>
+<div class="alert ${restriccionClase || 'ok'}">
+${restriccionTexto}
+</div>
 <p>Además, se ha verificado que no existen derechos de terceros que puedan verse afectados por la nueva captación, y que el punto se encuentra en el mismo sector hidrogeológico de aprovechamiento común.</p>
 </div>
 
 <div class="seccion">
-<h3>5. Justificación del caudal</h3>
-<p>El caudal de ${caudal} L/s es necesario para satisfacer los requerimientos de ${uso}. Se ha calculado en base a las necesidades del proyecto, considerando eficiencia de riego (si aplica) y pérdidas.</p>
+<h3>5. Justificación del caudal solicitado</h3>
+<p>El caudal de ${caudal} L/s es necesario para satisfacer los requerimientos de ${uso}. Se ha calculado en base a las necesidades del proyecto, considerando eficiencia de riego (si aplica), consumo humano o procesos productivos.</p>
 <p>${observaciones || 'Sin observaciones adicionales.'}</p>
 </div>
 
 <div class="seccion">
 <h3>6. Conclusiones</h3>
-<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación del cambio de punto de captación (o concesión) conforme a la normativa vigente.</p>
+<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación del cambio de punto de captación (o concesión) conforme a la normativa vigente (artículos 130 y siguientes del Código de Aguas).</p>
 </div>
 </body>
 </html>`;
 
-    // --- Documento 4: Extracto para Diario Oficial ---
+    // 4. Extracto Diario Oficial
     const extractoHtml = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Extracto Diario Oficial</title>
 <style>
-body { font-family: 'Times New Roman', serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+body { font-family: 'Times New Roman', serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+h2 { text-align: center; text-transform: uppercase; }
 </style>
 </head>
 <body>
 <h2>EXTRACTO</h2>
-<p>${solicitante}, ${rut ? 'RUT '+rut : ''}, solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, de carácter ${caracter}, en la comuna de ${subcuenca.COMUNA || '[comuna]'}, provincia de ${subcuenca.PROVINCIA || '[provincia]'}, región de ${subcuenca.REGION || '[región]'}. Captación desde punto definido por coordenadas UTM (m) Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}, Huso 19, Datum WGS84. Cualquier oposición deberá presentarse dentro del plazo legal.</p>
+<p>${solicitante}, ${rut ? 'RUT N° '+rut : ''}, solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, de carácter ${caracter}. Captación desde punto definido por coordenadas UTM (m) Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}, Huso 19, Datum WGS84, en la comuna de ${comuna}, provincia de ${provincia}, región de ${region}.</p>
 <p>Fecha: ${fecha}</p>
+<p>Cualquier oposición deberá presentarse dentro del plazo legal establecido en el Código de Aguas.</p>
 </body>
 </html>`;
 
-    // Descargar los cuatro archivos como HTML
-    function descargarHTML(contenido, nombre) {
-        const blob = new Blob([contenido], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nombre + '.html';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    // Función para abrir en nueva pestaña con botón de imprimir/PDF
+    function abrirDocumento(contenido, titulo) {
+        const ventana = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+        if (!ventana) { alert('Permite ventanas emergentes para descargar los documentos.'); return; }
+        ventana.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>${titulo}</title>
+        <style>
+        body { margin: 0; padding: 20px; }
+        @media print { body { padding: 0; } }
+        .btn-pdf { 
+            display: inline-block; background: #1a4a33; color: white; padding: 10px 24px; 
+            border: none; border-radius: 30px; font-weight: 600; font-size: 16px; cursor: pointer;
+            margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            position: sticky; top: 0; z-index: 10; 
+        }
+        .btn-pdf:hover { background: #2d6a4f; }
+        @media print { .btn-pdf { display: none; } }
+        </style>
+        </head>
+        <body>
+        <button class="btn-pdf" onclick="window.print()">📄 Descargar PDF (imprimir)</button>
+        <div>${contenido}</div>
+        </body>
+        </html>
+        `);
+        ventana.document.close();
     }
 
-    descargarHTML(solicitudHtml, 'Solicitud_formal');
-    descargarHTML(mapaHtml, 'Mapa_ubicacion');
-    descargarHTML(memoriaHtml, 'Memoria_explicativa');
-    descargarHTML(extractoHtml, 'Extracto_Diario_Oficial');
-
-    alert('Se han generado 4 documentos (HTML) que se descargarán. Puede abrirlos e imprimirlos/guardar como PDF.');
+    // Generar y abrir los 4 documentos
+    abrirDocumento(solicitudHtml, 'Solicitud_formal');
+    abrirDocumento(mapaHtml, 'Mapa_ubicacion');
+    abrirDocumento(memoriaHtml, 'Memoria_explicativa');
+    abrirDocumento(extractoHtml, 'Extracto_Diario_Oficial');
 }
 
 // ============ MODAL SOLICITUD ============
@@ -1326,6 +1148,8 @@ document.getElementById('formSolicitud').addEventListener('submit', function(e) 
     const uso = document.getElementById('uso').value.trim();
     const caracter = document.getElementById('caracter').value;
     const volumen = document.getElementById('volumen').value.trim();
+    const domicilio = document.getElementById('domicilio').value.trim();
+    const email = document.getElementById('email').value.trim();
     const observaciones = document.getElementById('observaciones').value.trim();
 
     if (!solicitante || !caudal || !uso) {
@@ -1333,11 +1157,8 @@ document.getElementById('formSolicitud').addEventListener('submit', function(e) 
         return;
     }
 
-    // Obtener datos de capas para el punto actual
     const datosCapa = obtenerDatosCapaPunto(ultimaPosicion.lat, ultimaPosicion.lng);
-
-    generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumen, observaciones, datosCapa);
-
+    generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumen, observaciones, datosCapa, domicilio, email);
     cerrarModalSolicitud();
 });
 
