@@ -71,6 +71,9 @@
             padding: 4px 12px;
             border-radius: 30px;
             border: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         #header .status-bar .badge.gps-on {
             background: #1f8b4c;
@@ -84,19 +87,41 @@
             border-radius: 50%;
             background: #e74c3c;
             margin-right: 6px;
-            vertical-align: middle;
             transition: background 0.3s;
         }
         .status-dot.active {
             background: #2ecc71;
             box-shadow: 0 0 8px #2ecc71;
         }
+        .btn-header {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #fff;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(2px);
+        }
+        .btn-header:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: #55c98d;
+        }
+        .btn-header:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         /* ---------- PANEL DE INFORMACIÓN ---------- */
         #info-panel {
             position: absolute;
             bottom: 100px;
             left: 20px;
-            width: 360px;
+            width: 380px;
             max-width: calc(100% - 40px);
             background: rgba(255,255,255,0.94);
             backdrop-filter: blur(8px);
@@ -120,6 +145,11 @@
             border-bottom: 2px solid #2d5a3f;
             padding-bottom: 10px;
             margin-bottom: 14px;
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 2;
+            backdrop-filter: blur(4px);
         }
         #info-panel .panel-title {
             font-weight: 700;
@@ -305,14 +335,6 @@
         .btn-tool.secondary:hover:not(:disabled) {
             background: rgba(30, 60, 50, 0.95);
         }
-        .btn-tool.tertiary {
-            background: rgba(0, 70, 120, 0.85);
-            color: white;
-            border-color: #3a8bc0;
-        }
-        .btn-tool.tertiary:hover:not(:disabled) {
-            background: rgba(0, 70, 120, 0.95);
-        }
         .btn-tool .icon {
             font-size: 20px;
         }
@@ -381,7 +403,7 @@
         .modal-box {
             background: white;
             border-radius: 24px;
-            max-width: 600px;
+            max-width: 650px;
             width: 92%;
             max-height: 90vh;
             overflow-y: auto;
@@ -432,6 +454,7 @@
             gap: 14px;
             margin-top: 24px;
             justify-content: flex-end;
+            flex-wrap: wrap;
         }
         .modal-box .acciones button {
             padding: 12px 28px;
@@ -466,6 +489,7 @@
             #toolbar { bottom: 16px; right: 16px; gap: 10px; }
             .btn-tool { padding: 10px 18px; font-size: 13px; }
             .modal-box { padding: 20px; }
+            .btn-header { font-size: 12px; padding: 4px 12px; }
         }
         @media (max-width: 480px) {
             #info-panel { width: calc(100% - 24px); left: 12px; bottom: 100px; max-height: 40vh; }
@@ -496,6 +520,9 @@
         <span class="badge" id="gpsStatus"><span class="status-dot" id="gpsDot"></span> GPS</span>
         <span class="badge">🔗 DGA</span>
         <span class="badge">📡 Leaflet</span>
+        <button id="btnSolicitudHeader" class="btn-header" onclick="abrirModalSolicitud()" disabled>
+            <span>📄</span> Solicitud
+        </button>
     </div>
 </header>
 
@@ -524,16 +551,13 @@
     </div>
 </div>
 
-<!-- BOTONERA -->
+<!-- BOTONERA INFERIOR -->
 <div id="toolbar">
     <button id="btnGPS" class="btn-tool primary" onclick="iniciarBusquedaGPS()">
         <span class="icon">📍</span> Obtener Ubicación
     </button>
     <button id="btnBuffer" class="btn-tool secondary" onclick="analizarBuffer()" disabled>
         <span class="icon">🔵</span> Buffer y Análisis
-    </button>
-    <button id="btnSolicitud" class="btn-tool tertiary" onclick="abrirModalSolicitud()" disabled>
-        <span class="icon">📄</span> Generar Solicitud
     </button>
 </div>
 
@@ -560,6 +584,23 @@
                     <option value="Subterránea">Subterránea</option>
                     <option value="Superficial">Superficial</option>
                 </select>
+            </div>
+            <div class="campo">
+                <label for="uso">Uso del agua *</label>
+                <input type="text" id="uso" placeholder="Ej: Riego, consumo humano, industrial" required>
+            </div>
+            <div class="campo">
+                <label for="caracter">Carácter del derecho</label>
+                <select id="caracter">
+                    <option value="Consuntivo, permanente y continuo">Consuntivo, permanente y continuo</option>
+                    <option value="No consuntivo, permanente y continuo">No consuntivo, permanente y continuo</option>
+                    <option value="Consuntivo, eventual y discontinuo">Consuntivo, eventual y discontinuo</option>
+                    <option value="No consuntivo, eventual y discontinuo">No consuntivo, eventual y discontinuo</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="volumen">Volumen anual (m³) (opcional)</label>
+                <input type="number" id="volumen" placeholder="Ej: 1000000" step="1">
             </div>
             <div class="campo">
                 <label for="observaciones">Observaciones / Justificación</label>
@@ -716,11 +757,48 @@ Promise.all([
 })
 .catch(error => alert("Error cargando mapas: " + error.message));
 
+// ============ EXTRACCIÓN DE DATOS DE CAPAS PARA EL PUNTO ============
+function obtenerDatosCapaPunto(lat, lng) {
+    const punto = turf.point([lng, lat]);
+    const datos = {};
+
+    capasCargadas.forEach(item => {
+        const nombre = item.nombre;
+        let encontrado = false;
+        // Buscar primer elemento que intersecte (polígono) o más cercano (línea/punto)
+        let mejorDistancia = Infinity;
+        let mejorFeature = null;
+
+        item.geojson.features.forEach(feature => {
+            const resultado = analizarRelacionEspacial(punto, feature);
+            if (resultado.tipo === 'poligono' && resultado.dentro) {
+                // Si es polígono y contiene el punto, lo tomamos inmediatamente
+                mejorFeature = feature;
+                encontrado = true;
+                // no break porque puede haber varios, pero tomamos el primero
+                return;
+            } else if (resultado.tipo === 'linea' || resultado.tipo === 'punto') {
+                const dist = resultado.distancia;
+                if (dist !== null && dist < mejorDistancia && dist < 1500) { // radio de búsqueda 1.5km
+                    mejorDistancia = dist;
+                    mejorFeature = feature;
+                    encontrado = true;
+                }
+            }
+        });
+
+        if (encontrado && mejorFeature) {
+            datos[nombre] = mejorFeature.properties;
+        }
+    });
+    return datos;
+}
+
 // ============ GPS ============
 function iniciarBusquedaGPS() {
     const btnGPS = document.getElementById('btnGPS');
     const btnBuffer = document.getElementById('btnBuffer');
-    const btnSolicitud = document.getElementById('btnSolicitud');
+    const btnSolicitud = document.getElementById('btnSolicitudHeader');
     if (!navigator.geolocation) {
         alert("Tu navegador no admite geolocalización.");
         return;
@@ -765,7 +843,7 @@ function iniciarWatcher() {
                 watcherID = null;
                 restablecerBotonGPS();
                 const btnBuffer = document.getElementById('btnBuffer');
-                const btnSolicitud = document.getElementById('btnSolicitud');
+                const btnSolicitud = document.getElementById('btnSolicitudHeader');
                 btnBuffer.disabled = false;
                 btnSolicitud.disabled = false;
                 document.getElementById('gpsDot').className = 'status-dot active';
@@ -815,6 +893,7 @@ function actualizarMarcador(posicion, volar = false) {
     document.getElementById('panelBadge').textContent = '📍 Ubicación fijada';
     document.getElementById('panelBadge').style.background = '#2d5a3f';
 
+    // Popup con detalles del punto
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
                           <b>Lat:</b> ${lat.toFixed(6)} <b>Lng:</b> ${lng.toFixed(6)}<br>
@@ -879,8 +958,6 @@ function toggleMarker() {
     if (!puntoUbicacion) return;
     if (marcadorVisible) {
         map.removeLayer(puntoUbicacion);
-        // También ocultamos el círculo de precisión? Lo dejamos visible para contexto.
-        // Ocultamos también el popup si está abierto
         puntoUbicacion.closePopup();
         marcadorVisible = false;
         document.getElementById('toggleMarkerBtn').textContent = '◉';
@@ -987,7 +1064,6 @@ function analizarBuffer() {
                 bufferHTML += `<div style="margin-top:12px; font-weight:600; font-size:14px; color:${color};">${emoji} ${capaRes.nombre} (${capaRes.cantidad})</div>`;
                 capaRes.elementos.forEach(elem => {
                     const props = elem.feature.properties;
-                    // Tomamos solo algunas propiedades relevantes (mostrar hasta 4)
                     const propKeys = Object.keys(props);
                     let propsHTML = '';
                     const maxProps = 4;
@@ -1056,6 +1132,173 @@ function restablecerBotonBuffer() {
     btn.disabled = false;
 }
 
+// ============ GENERACIÓN DE DOCUMENTOS ============
+function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumenAnual, observaciones, datosCapa) {
+    const lat = ultimaPosicion.lat;
+    const lng = ultimaPosicion.lng;
+    const precision = ultimaPosicion.precision;
+    const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+
+    // Extraer datos de capas
+    const subcuenca = datosCapa['Subsubcuencas'] || {};
+    const restriccion = datosCapa['Restricciones'] || {};
+    const redhidro = datosCapa['Red Hidrográfica'] || {};
+    const juntas = datosCapa['Juntas de Vigilancia'] || {};
+
+    const cuenca = subcuenca.NOM_CUEN || 'No definida';
+    const subcuencaNombre = subcuenca.NOM_SUBC || subcuenca.NOM_SSUBC || 'No definida';
+    const shac = restriccion.SHAC || 'No disponible';
+    const tipoRestriccion = restriccion.TIPO || restriccion.NOMBRE || 'Sin restricción';
+    const acuifero = subcuenca.NOM_ACUIF || 'No definido';
+    const sectorHidro = subcuenca.SECTOR_HIDRO || 'No definido';
+
+    // Determinar si es zona de restricción o prohibición
+    let restriccionTexto = 'No se encuentra en área de restricción o prohibición.';
+    if (restriccion.TIPO && restriccion.TIPO.toLowerCase().includes('restricción')) {
+        restriccionTexto = 'El punto se encuentra en un Área de Restricción. Solo es posible otorgar derechos provisionales.';
+    } else if (restriccion.TIPO && restriccion.TIPO.toLowerCase().includes('prohibición')) {
+        restriccionTexto = 'El punto se encuentra en una Zona de Prohibición. No es posible otorgar nuevos derechos.';
+    }
+
+    // --- Documento 1: Solicitud formal ---
+    const solicitudHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Solicitud formal</title>
+<style>
+body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+h1 { font-size: 18px; text-align: center; text-transform: uppercase; }
+.destinatario { margin: 20px 0; }
+.datos { margin: 20px 0; }
+.firma { margin-top: 40px; }
+</style>
+</head>
+<body>
+<h1>SOLICITUD DE DERECHO DE APROVECHAMIENTO DE AGUAS ${fuente.toUpperCase()}</h1>
+<p><b>${solicitante}</b>, ${rut ? 'RUT '+rut : ''}, con domicilio para estos efectos en [dirección], correo electrónico [correo], al Sr. Director General de Aguas, respetuosamente solicita:</p>
+<p>Con el objeto de ${uso}, solicito un derecho de aprovechamiento de aguas ${fuente.toLowerCase()}, de carácter ${caracter}, por un caudal de ${caudal} L/s${volumenAnual ? ', y un volumen anual de '+volumenAnual+' m³' : ''}, sobre las aguas ${fuente.toLowerCase()}s ubicadas en la comuna de [comuna], provincia de [provincia], región de [región].</p>
+<p>La captación se realizará por ${fuente === 'Subterránea' ? 'elevación mecánica' : 'gravitación'} desde un punto definido por las coordenadas UTM (m) Norte: ${lat.toFixed(3)}, Este: ${lng.toFixed(3)}, Huso 19, Datum WGS84.</p>
+<p>Se adjunta memoria explicativa y demás antecedentes técnicos.</p>
+<p>POR TANTO, solicito se tenga por presentada la solicitud y se proceda conforme a derecho.</p>
+<div class="firma">
+<p>${solicitante}</p>
+<p>Fecha: ${fecha}</p>
+</div>
+</body>
+</html>`;
+
+    // --- Documento 2: Mapa (página con imagen estática) ---
+    const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=600x400&maptype=mapnik&markers=${lat},${lng},ol-marker`;
+    const mapaHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Mapa de ubicación</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; text-align: center; }
+img { max-width: 100%; border: 1px solid #ccc; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h2>Ubicación del punto de captación</h2>
+<p>Coordenadas UTM (WGS84, Huso 19): Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}</p>
+<img src="${staticMapUrl}" alt="Mapa" />
+<p><small>Mapa generado con OpenStreetMap</small></p>
+</body>
+</html>`;
+
+    // --- Documento 3: Memoria explicativa/técnica ---
+    const memoriaHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Memoria explicativa</title>
+<style>
+body { font-family: 'Times New Roman', serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+h2 { color: #1a4a33; }
+.seccion { margin: 20px 0; }
+</style>
+</head>
+<body>
+<h2>MEMORIA EXPLICATIVA</h2>
+<p><b>Solicitante:</b> ${solicitante} (${rut || 'sin RUT'})</p>
+<p><b>Fecha:</b> ${fecha}</p>
+
+<div class="seccion">
+<h3>1. Descripción del proyecto</h3>
+<p>Se solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s, de carácter ${caracter}.</p>
+</div>
+
+<div class="seccion">
+<h3>2. Ubicación</h3>
+<p>Coordenadas UTM (WGS84, Huso 19): Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}.</p>
+<p>Comuna: ${subcuenca.COMUNA || 'No determinada'}</p>
+<p>Cuenca: ${cuenca}</p>
+<p>Subcuenca: ${subcuencaNombre}</p>
+<p>Acuífero: ${acuifero}</p>
+<p>Sector hidrogeológico: ${sectorHidro}</p>
+<p>SHAC: ${shac}</p>
+</div>
+
+<div class="seccion">
+<h3>3. Disponibilidad del recurso</h3>
+<p>Según los antecedentes técnicos disponibles, el caudal solicitado es compatible con la oferta hídrica de la zona. Se ha verificado la existencia de agua en el punto de captación mediante pruebas de bombeo (o aforos) que avalan el caudal requerido.</p>
+</div>
+
+<div class="seccion">
+<h3>4. Análisis de restricciones</h3>
+<p>${restriccionTexto}</p>
+<p>Además, se ha verificado que no existen derechos de terceros que puedan verse afectados por la nueva captación, y que el punto se encuentra en el mismo sector hidrogeológico de aprovechamiento común.</p>
+</div>
+
+<div class="seccion">
+<h3>5. Justificación del caudal</h3>
+<p>El caudal de ${caudal} L/s es necesario para satisfacer los requerimientos de ${uso}. Se ha calculado en base a las necesidades del proyecto, considerando eficiencia de riego (si aplica) y pérdidas.</p>
+<p>${observaciones || 'Sin observaciones adicionales.'}</p>
+</div>
+
+<div class="seccion">
+<h3>6. Conclusiones</h3>
+<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación del cambio de punto de captación (o concesión) conforme a la normativa vigente.</p>
+</div>
+</body>
+</html>`;
+
+    // --- Documento 4: Extracto para Diario Oficial ---
+    const extractoHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Extracto Diario Oficial</title>
+<style>
+body { font-family: 'Times New Roman', serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+</style>
+</head>
+<body>
+<h2>EXTRACTO</h2>
+<p>${solicitante}, ${rut ? 'RUT '+rut : ''}, solicita un derecho de aprovechamiento de aguas ${fuente.toLowerCase()} para ${uso}, con un caudal de ${caudal} L/s${volumenAnual ? ' y un volumen anual de '+volumenAnual+' m³' : ''}, de carácter ${caracter}, en la comuna de ${subcuenca.COMUNA || '[comuna]'}, provincia de ${subcuenca.PROVINCIA || '[provincia]'}, región de ${subcuenca.REGION || '[región]'}. Captación desde punto definido por coordenadas UTM (m) Norte ${lat.toFixed(3)}, Este ${lng.toFixed(3)}, Huso 19, Datum WGS84. Cualquier oposición deberá presentarse dentro del plazo legal.</p>
+<p>Fecha: ${fecha}</p>
+</body>
+</html>`;
+
+    // Descargar los cuatro archivos como HTML
+    function descargarHTML(contenido, nombre) {
+        const blob = new Blob([contenido], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombre + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    descargarHTML(solicitudHtml, 'Solicitud_formal');
+    descargarHTML(mapaHtml, 'Mapa_ubicacion');
+    descargarHTML(memoriaHtml, 'Memoria_explicativa');
+    descargarHTML(extractoHtml, 'Extracto_Diario_Oficial');
+
+    alert('Se han generado 4 documentos (HTML) que se descargarán. Puede abrirlos e imprimirlos/guardar como PDF.');
+}
+
 // ============ MODAL SOLICITUD ============
 function abrirModalSolicitud() {
     if (!ultimaPosicion) {
@@ -1080,110 +1323,20 @@ document.getElementById('formSolicitud').addEventListener('submit', function(e) 
     const rut = document.getElementById('rut').value.trim();
     const caudal = document.getElementById('caudal').value.trim();
     const fuente = document.getElementById('fuente').value;
+    const uso = document.getElementById('uso').value.trim();
+    const caracter = document.getElementById('caracter').value;
+    const volumen = document.getElementById('volumen').value.trim();
     const observaciones = document.getElementById('observaciones').value.trim();
 
-    if (!solicitante || !caudal) {
+    if (!solicitante || !caudal || !uso) {
         alert('Por favor completa los campos obligatorios (*).');
         return;
     }
 
-    const lat = ultimaPosicion.lat;
-    const lng = ultimaPosicion.lng;
-    const precision = ultimaPosicion.precision;
-    const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+    // Obtener datos de capas para el punto actual
+    const datosCapa = obtenerDatosCapaPunto(ultimaPosicion.lat, ultimaPosicion.lng);
 
-    let bufferInfo = '';
-    const bufferArea = document.getElementById('bufferResultArea');
-    if (bufferArea.style.display !== 'none' && bufferArea.innerHTML.trim() !== '') {
-        bufferInfo = `<h3>Elementos dentro del buffer</h3>
-                      <div style="background:#f5f9f7; padding:12px; border-radius:8px; margin:12px 0;">
-                        ${bufferArea.innerHTML}
-                      </div>`;
-    }
-
-    const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=600x300&maptype=mapnik&markers=${lat},${lng},ol-marker`;
-
-    const docHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Solicitud de Derechos de Agua</title>
-<style>
-body { font-family: 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #1a2e24; background: #fff; }
-header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2d5a3f; padding-bottom: 16px; margin-bottom: 24px; }
-header h1 { margin: 0; font-size: 24px; color: #1a4a33; }
-header small { font-weight: normal; font-size: 16px; color: #3a6a55; }
-.logo { width: 60px; height: 60px; }
-.detalle { background: #f0f6f3; padding: 16px 20px; border-radius: 12px; margin: 16px 0; border-left: 6px solid #2d5a3f; }
-.detalle p { margin: 6px 0; }
-.tabla-datos { width: 100%; border-collapse: collapse; margin: 16px 0; }
-.tabla-datos td { padding: 8px 12px; border-bottom: 1px solid #dce6e0; }
-.tabla-datos td:first-child { font-weight: 600; width: 40%; color: #1a4a33; }
-.mapa { margin: 20px 0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
-.mapa img { width: 100%; height: auto; display: block; }
-.firma { margin-top: 40px; border-top: 2px solid #dce6e0; padding-top: 20px; font-style: italic; color: #4a6a5a; }
-</style>
-</head>
-<body>
-<header>
-  <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="48" fill="#1e90ff" stroke="#fff" stroke-width="2"/>
-    <path d="M40,30 L55,28 L60,40 L58,55 L45,70 L38,65 L32,50 Z" fill="#228b22" stroke="#fff" stroke-width="0.5"/>
-    <path d="M38,35 L44,34 L46,45 L44,60 L42,70 L38,65 Z" fill="#FFD700" stroke="#b8860b" stroke-width="0.8"/>
-  </svg>
-  <div>
-    <h1>Solicitud de Derechos de Agua <small>ChileAguas</small></h1>
-    <p style="margin:0; color:#2d5a3f;">Documento generado automáticamente</p>
-  </div>
-</header>
-
-<h2>Memoria Explicativa</h2>
-<p>El presente documento formaliza la solicitud de derechos de aprovechamiento de aguas, de acuerdo a la normativa vigente, sobre la base de la georreferenciación realizada en el Sistema ChileAguas.</p>
-
-<div class="detalle">
-  <p><strong>Fecha de emisión:</strong> ${fecha}</p>
-  <p><strong>Solicitante:</strong> ${solicitante}${rut ? ' (RUT: '+rut+')' : ''}</p>
-  <p><strong>Caudal solicitado:</strong> ${caudal} L/s</p>
-  <p><strong>Tipo de fuente:</strong> ${fuente}</p>
-  <p><strong>Ubicación (GPS):</strong> Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)} (Precisión ~${Math.round(precision)} m)</p>
-</div>
-
-<h3>Georreferenciación y Mapa de ubicación</h3>
-<p>El punto exacto de la solicitud se encuentra en las siguientes coordenadas:</p>
-<table class="tabla-datos">
-  <tr><td>Latitud</td><td>${lat.toFixed(6)}</td></tr>
-  <tr><td>Longitud</td><td>${lng.toFixed(6)}</td></tr>
-  <tr><td>Precisión estimada</td><td>~${Math.round(precision)} metros</td></tr>
-  <tr><td>Fuente</td><td>${fuente}</td></tr>
-  <tr><td>Caudal</td><td>${caudal} L/s</td></tr>
-</table>
-
-<div class="mapa">
-  <img src="${staticMapUrl}" alt="Mapa de ubicación" />
-  <p style="text-align:center; font-size:12px; color:#6a8a7a; margin-top:4px;">Ubicación del punto solicitado (marcador rojo)</p>
-</div>
-
-<h3>Justificación y observaciones</h3>
-<p>${observaciones || 'Sin observaciones adicionales.'}</p>
-
-${bufferInfo}
-
-<div class="firma">
-  <p>Firma del solicitante: _________________________</p>
-  <p style="font-size:12px; margin-top:20px;">Este documento ha sido generado automáticamente por el sistema ChileAguas y tiene valor referencial para la tramitación oficial.</p>
-</div>
-</body>
-</html>
-    `;
-
-    const ventana = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
-    if (!ventana) {
-        alert('Por favor permite ventanas emergentes para generar el documento.');
-        return;
-    }
-    ventana.document.write(docHtml);
-    ventana.document.close();
+    generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumen, observaciones, datosCapa);
 
     cerrarModalSolicitud();
 });
