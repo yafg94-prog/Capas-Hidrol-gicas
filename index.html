@@ -480,7 +480,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas
+// Control de capas con nombres más amigables
 const controlCapas = L.control.layers({}, {}, { collapsed: false, position: 'topleft' }).addTo(map);
 const grupoGeneral = L.featureGroup();
 const capasCargadas = [];
@@ -492,6 +492,69 @@ let bufferCircle = null;
 let ultimaPosicion = null;
 let marcadorVisible = true;
 let utmCoords = null;
+
+// ============ MAPEO DE CAMPOS A NOMBRES AMIGABLES ============
+const MAPA_CAMPOS_AMIGABLES = {
+    // Subsubcuencas
+    'NOM_CUEN': 'Cuenca',
+    'NOM_SUBC': 'Subcuenca',
+    'NOM_SSUBC': 'Subsubcuenca',
+    'NOM_ACUIF': 'Nombre Acuífero',
+    'NOM_ESTACI': 'Estación',
+    'ALTITUD_MS': 'Altitud (msnm)',
+    'COMUNA': 'Comuna',
+    'PROVINCIA': 'Provincia',
+    'REGION': 'Región',
+    'SHAC': 'SHAC',
+    // Restricciones
+    'TIPO': 'Tipo de restricción',
+    'RES_DGA': 'Resolución DGA',
+    'F_RES_DGA': 'Fecha Resolución',
+    'TIPO_LIMIT': 'Tipo de limitación',
+    'a_km2': 'Área (km²)',
+    'Shape_Leng': 'Longitud (m)',
+    'Shape_Area': 'Área (m²)',
+    // Juntas de Vigilancia
+    'NOM_JUNTA': 'Nombre Junta',
+    'NOM_CORTA': 'Nombre corto',
+    'DIRECCION': 'Dirección',
+    'TELEFONO': 'Teléfono',
+    'EMAIL': 'Correo',
+    // Red Hidrográfica
+    'NOM_RIO': 'Nombre río',
+    'ORDEN': 'Orden',
+    'NOM_CUENCA': 'Cuenca',
+    // Campos a eliminar (no mostrar)
+};
+
+// Lista de campos que NO se mostrarán
+const CAMPOS_OCULTOS = ['OBJECTID', 'NOM_BNA', 'ID', 'FID', 'OR_IECTID', 'UBTECTID', 'Shape_Leng', 'Shape_Area'];
+
+// Función para obtener nombre amigable de un campo
+function obtenerNombreAmigable(campoOriginal) {
+    if (MAPA_CAMPOS_AMIGABLES[campoOriginal]) {
+        return MAPA_CAMPOS_AMIGABLES[campoOriginal];
+    }
+    // Si no está mapeado, convertir a formato legible: reemplazar _ por espacio, capitalizar
+    let nombre = campoOriginal.replace(/_/g, ' ').toLowerCase();
+    nombre = nombre.replace(/\b\w/g, l => l.toUpperCase());
+    return nombre;
+}
+
+// Función para filtrar y mapear propiedades de un feature
+function obtenerPropiedadesAmigables(feature) {
+    const props = feature.properties || {};
+    const resultado = [];
+    for (let [key, value] of Object.entries(props)) {
+        // Saltar campos ocultos
+        if (CAMPOS_OCULTOS.includes(key)) continue;
+        // Saltar valores vacíos o nulos
+        if (value === null || value === undefined || value === '') continue;
+        const nombreAmigable = obtenerNombreAmigable(key);
+        resultado.push({ clave: nombreAmigable, valor: value });
+    }
+    return resultado;
+}
 
 // ============ ICONOS ============
 const pinIcon = L.divIcon({
@@ -537,10 +600,12 @@ function analizarRelacionEspacial(puntoUsuario, feature) {
     }
 }
 
+// Popup con nombres amigables
 function crearPopup(feature) {
+    const propsAmigables = obtenerPropiedadesAmigables(feature);
     let html = '';
-    for (let campo in feature.properties) {
-        html += '<b>' + campo + '</b>: ' + feature.properties[campo] + '<br>';
+    for (let item of propsAmigables) {
+        html += `<b>${item.clave}:</b> ${item.valor}<br>`;
     }
     return html;
 }
@@ -596,7 +661,7 @@ function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas
+// Carga de capas con nombres amigables en el control
 Promise.all([
     crearCapa('./SubRM2.geojson', '#e74c3c', 'Subsubcuencas', 'poligono', false),
     crearCapa('./Juntas.geojson', '#2980b9', 'Juntas de Vigilancia', 'punto'),
@@ -616,7 +681,6 @@ function convertirAUTM(lat, lng) {
         const utm = fromLatLon(lat, lng);
         return { norte: utm.northing, este: utm.easting, huso: utm.zoneNum, letra: utm.zoneLetter };
     } catch (e) {
-        // Si falla, devolvemos valores aproximados (huso 19 para Chile)
         return { norte: lat * 111000, este: lng * 111000, huso: 19 };
     }
 }
@@ -755,7 +819,7 @@ function actualizarMarcador(posicion, volar = false) {
     document.getElementById('toggleMarkerBtn').textContent = '✕';
     document.getElementById('toggleMarkerBtn').title = 'Ocultar marcador';
 
-    // Popup con detalles (opcional)
+    // Popup con detalles (usando nombres amigables)
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
                           <b>UTM (WGS84, H${utm.huso}):</b> N ${utm.norte.toFixed(0)}, E ${utm.este.toFixed(0)}<br>
@@ -769,22 +833,31 @@ function actualizarMarcador(posicion, volar = false) {
             const resultado = analizarRelacionEspacial(puntoTurf, feature);
             if (resultado.tipo === 'poligono' && resultado.dentro) {
                 if (contadorFeatures === 0) capaInfo += `<b>📁 ${item.nombre}</b><br>`;
+                const propsAmigables = obtenerPropiedadesAmigables(feature);
                 capaInfo += `<div style="margin-left:15px; font-size:12px;">✅ Dentro del polígono<br>`;
-                for (let prop in feature.properties) capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                for (let p of propsAmigables) {
+                    capaInfo += `• <b>${p.clave}:</b> ${p.valor}<br>`;
+                }
                 capaInfo += `</div>`;
                 contadorFeatures++;
                 encontradoAlgo = true;
             } else if (resultado.tipo === 'linea' && resultado.distancia < 1000) {
                 if (contadorFeatures === 0) capaInfo += `<b>📁 ${item.nombre}</b><br>`;
+                const propsAmigables = obtenerPropiedadesAmigables(feature);
                 capaInfo += `<div style="margin-left:15px; font-size:12px;">📏 Línea a ${Math.round(resultado.distancia)} m<br>`;
-                for (let prop in feature.properties) capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                for (let p of propsAmigables) {
+                    capaInfo += `• <b>${p.clave}:</b> ${p.valor}<br>`;
+                }
                 capaInfo += `</div>`;
                 contadorFeatures++;
                 encontradoAlgo = true;
             } else if (resultado.tipo === 'punto' && resultado.distancia < 1000) {
                 if (contadorFeatures === 0) capaInfo += `<b>📁 ${item.nombre}</b><br>`;
+                const propsAmigables = obtenerPropiedadesAmigables(feature);
                 capaInfo += `<div style="margin-left:15px; font-size:12px;">📍 Punto a ${Math.round(resultado.distancia)} m<br>`;
-                for (let prop in feature.properties) capaInfo += `• <b>${prop}:</b> ${feature.properties[prop]}<br>`;
+                for (let p of propsAmigables) {
+                    capaInfo += `• <b>${p.clave}:</b> ${p.valor}<br>`;
+                }
                 capaInfo += `</div>`;
                 contadorFeatures++;
                 encontradoAlgo = true;
@@ -832,7 +905,7 @@ function toggleMarker() {
     }
 }
 
-// ============ BUFFER ============
+// ============ BUFFER CON NOMBRES AMIGABLES ============
 function cerrarBuffer() {
     document.getElementById('buffer-panel').style.display = 'none';
     if (bufferCircle) {
@@ -934,14 +1007,14 @@ function analizarBuffer() {
                 const emoji = emojiPorCapa[capaRes.nombre] || '📌';
                 bufferHTML += `<div style="margin-top:12px; font-weight:600; font-size:14px; color:${color};">${emoji} ${capaRes.nombre} (${capaRes.cantidad})</div>`;
                 capaRes.elementos.forEach(elem => {
-                    const props = elem.feature.properties;
-                    const propKeys = Object.keys(props);
+                    const propsAmigables = obtenerPropiedadesAmigables(elem.feature);
                     let propsHTML = '';
+                    // Mostrar máximo 4 propiedades para no saturar
                     const maxProps = 4;
-                    propKeys.slice(0, maxProps).forEach(key => {
-                        propsHTML += `<span><span class="prop-clave">${key}:</span> ${props[key]}</span>`;
+                    propsAmigables.slice(0, maxProps).forEach(p => {
+                        propsHTML += `<span><span class="prop-clave">${p.clave}:</span> ${p.valor}</span>`;
                     });
-                    if (propKeys.length > maxProps) propsHTML += `<span>…</span>`;
+                    if (propsAmigables.length > maxProps) propsHTML += `<span>…</span>`;
 
                     bufferHTML += `
                         <div class="elemento-card ${claseColor}">
@@ -978,11 +1051,9 @@ function restablecerBotonBuffer() {
 // ============ CAPTURA DE MAPA (SIN CONTROLES) ============
 function capturarMapa() {
     return new Promise((resolve) => {
-        // Ocultar controles temporalmente
         const controlContainer = document.querySelector('.leaflet-control-container');
         const originalDisplay = controlContainer.style.display;
         controlContainer.style.display = 'none';
-        // También ocultar el panel de diagnóstico y buffer si están visibles
         const infoPanel = document.getElementById('info-panel');
         const bufferPanel = document.getElementById('buffer-panel');
         const infoDisplay = infoPanel.style.display;
@@ -997,13 +1068,11 @@ function capturarMapa() {
             backgroundColor: '#eef2f5',
             scale: 1.2
         }).then(canvas => {
-            // Restaurar todo
             controlContainer.style.display = originalDisplay || '';
             infoPanel.style.display = infoDisplay || '';
             bufferPanel.style.display = bufferDisplay || '';
             resolve(canvas.toDataURL('image/png'));
         }).catch(() => {
-            // Restaurar en caso de error
             controlContainer.style.display = originalDisplay || '';
             infoPanel.style.display = infoDisplay || '';
             bufferPanel.style.display = bufferDisplay || '';
@@ -1012,20 +1081,19 @@ function capturarMapa() {
     });
 }
 
-// ============ GENERACIÓN DE DOCUMENTOS MEJORADOS ============
+// ============ GENERACIÓN DE DOCUMENTOS ============
 async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumenAnual, observaciones, datosCapa, domicilio, email) {
     const lat = ultimaPosicion.lat;
     const lng = ultimaPosicion.lng;
     const precision = ultimaPosicion.precision;
     const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
 
-    // Obtener UTM
     const utm = convertirAUTM(lat, lng);
     const norte = utm.norte.toFixed(0);
     const este = utm.este.toFixed(0);
     const huso = utm.huso;
 
-    // Helper para obtener propiedades con muchos nombres posibles
+    // Función helper para extraer propiedades con nombres amigables y filtrar ocultos
     function getProp(obj, ...keys) {
         for (let key of keys) {
             if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
@@ -1035,8 +1103,7 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
 
     const subcuenca = datosCapa['Subsubcuencas'] || {};
     const restriccion = datosCapa['Restricciones'] || {};
-    // Intentar obtener comuna, provincia, región desde la subcuenca o restricción
-    const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna', 'NOM_COM') || getProp(restriccion, 'COMUNA', 'NOM_COMUNA', 'Comuna');
+    const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna') || getProp(restriccion, 'COMUNA', 'NOM_COMUNA', 'Comuna');
     const provincia = getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia') || getProp(restriccion, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
     const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region') || getProp(restriccion, 'REGION', 'NOM_REGION', 'Region');
     const cuenca = getProp(subcuenca, 'NOM_CUEN', 'CUENCA', 'Cuenca');
@@ -1055,11 +1122,10 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
         restriccionClase = 'prohibicion';
     }
 
-    // Capturar imagen del mapa (limpia)
     const imgData = await capturarMapa();
     const imgTag = imgData ? `<img src="${imgData}" alt="Mapa" style="max-width:100%; border:2px solid #1a4a33; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" />` : '<p>No se pudo capturar la imagen del mapa.</p>';
 
-    // 1. Solicitud formal extensa
+    // 1. Solicitud formal
     const solicitudHtml = `
 <!DOCTYPE html>
 <html>
@@ -1136,7 +1202,7 @@ ${volumenAnual ? `<tr><td>Volumen anual</td><td>${volumenAnual} m³</td></tr>` :
 </body>
 </html>`;
 
-    // 2. Mapa con imagen capturada limpia
+    // 2. Mapa
     const mapaHtml = `
 <!DOCTYPE html>
 <html>
@@ -1242,7 +1308,6 @@ h2 { text-align: center; text-transform: uppercase; }
 </body>
 </html>`;
 
-    // Función para abrir en nueva pestaña con botón de imprimir/PDF
     function abrirDocumento(contenido, titulo) {
         const ventana = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
         if (!ventana) { alert('Permite ventanas emergentes para descargar los documentos.'); return; }
@@ -1272,7 +1337,6 @@ h2 { text-align: center; text-transform: uppercase; }
         ventana.document.close();
     }
 
-    // Generar y abrir los 4 documentos
     abrirDocumento(solicitudHtml, 'Solicitud_formal');
     abrirDocumento(mapaHtml, 'Mapa_ubicacion');
     abrirDocumento(memoriaHtml, 'Memoria_explicativa');
