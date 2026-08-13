@@ -103,6 +103,17 @@
         }
         #info-panel .info-grid .label { color: #4a6a5a; font-weight: 500; }
         #info-panel .info-grid .value { color: #0d2b1e; font-weight: 600; text-align: right; font-family: 'Courier New', monospace; }
+        #info-panel .estado-restriccion {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            border-left: 6px solid #27ae60;
+        }
+        #info-panel .estado-restriccion.prohibicion { background: #f8d7da; border-left-color: #e74c3c; color: #721c24; }
+        #info-panel .estado-restriccion.restriccion { background: #fff3cd; border-left-color: #f39c12; color: #856404; }
+        #info-panel .estado-restriccion.libre { background: #d4edda; border-left-color: #27ae60; color: #155724; }
         /* ---------- PANEL DE BUFFER (independiente) ---------- */
         #buffer-panel {
             position: absolute;
@@ -376,6 +387,7 @@
             <span class="label">Huso</span>
             <span class="value" id="displayHuso">19</span>
         </div>
+        <div id="estadoRestriccionPanel" class="estado-restriccion" style="display:none;"></div>
     </div>
 </div>
 
@@ -480,7 +492,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Control de capas con nombres más amigables
+// Control de capas
 const controlCapas = L.control.layers({}, {}, { collapsed: false, position: 'topleft' }).addTo(map);
 const grupoGeneral = L.featureGroup();
 const capasCargadas = [];
@@ -495,7 +507,6 @@ let utmCoords = null;
 
 // ============ MAPEO DE CAMPOS A NOMBRES AMIGABLES ============
 const MAPA_CAMPOS_AMIGABLES = {
-    // Subsubcuencas
     'NOM_CUEN': 'Cuenca',
     'NOM_SUBC': 'Subcuenca',
     'NOM_SSUBC': 'Subsubcuenca',
@@ -506,54 +517,58 @@ const MAPA_CAMPOS_AMIGABLES = {
     'PROVINCIA': 'Provincia',
     'REGION': 'Región',
     'SHAC': 'SHAC',
-    // Restricciones
     'TIPO': 'Tipo de restricción',
     'RES_DGA': 'Resolución DGA',
     'F_RES_DGA': 'Fecha Resolución',
     'TIPO_LIMIT': 'Tipo de limitación',
     'a_km2': 'Área (km²)',
-    'Shape_Leng': 'Longitud (m)',
-    'Shape_Area': 'Área (m²)',
-    // Juntas de Vigilancia
     'NOM_JUNTA': 'Nombre Junta',
     'NOM_CORTA': 'Nombre corto',
     'DIRECCION': 'Dirección',
     'TELEFONO': 'Teléfono',
     'EMAIL': 'Correo',
-    // Red Hidrográfica
     'NOM_RIO': 'Nombre río',
     'ORDEN': 'Orden',
     'NOM_CUENCA': 'Cuenca',
-    // Campos a eliminar (no mostrar)
+    'Nom_Com': 'Comuna',
+    'Nom_Prov': 'Provincia'
 };
 
-// Lista de campos que NO se mostrarán
 const CAMPOS_OCULTOS = ['OBJECTID', 'NOM_BNA', 'ID', 'FID', 'OR_IECTID', 'UBTECTID', 'Shape_Leng', 'Shape_Area'];
 
-// Función para obtener nombre amigable de un campo
 function obtenerNombreAmigable(campoOriginal) {
     if (MAPA_CAMPOS_AMIGABLES[campoOriginal]) {
         return MAPA_CAMPOS_AMIGABLES[campoOriginal];
     }
-    // Si no está mapeado, convertir a formato legible: reemplazar _ por espacio, capitalizar
     let nombre = campoOriginal.replace(/_/g, ' ').toLowerCase();
     nombre = nombre.replace(/\b\w/g, l => l.toUpperCase());
     return nombre;
 }
 
-// Función para filtrar y mapear propiedades de un feature
 function obtenerPropiedadesAmigables(feature) {
     const props = feature.properties || {};
     const resultado = [];
     for (let [key, value] of Object.entries(props)) {
-        // Saltar campos ocultos
         if (CAMPOS_OCULTOS.includes(key)) continue;
-        // Saltar valores vacíos o nulos
         if (value === null || value === undefined || value === '') continue;
         const nombreAmigable = obtenerNombreAmigable(key);
         resultado.push({ clave: nombreAmigable, valor: value });
     }
     return resultado;
+}
+
+// ============ FUNCIÓN PARA CLASIFICAR RESTRICCIÓN ============
+function clasificarRestriccion(props) {
+    // Buscar el campo TIPO_LIMIT o TIPO
+    let tipoLimit = props.TIPO_LIMIT || props.TIPO || '';
+    tipoLimit = tipoLimit.toLowerCase().trim();
+    if (tipoLimit.includes('prohibición') || tipoLimit.includes('prohibicion')) {
+        return { clase: 'prohibicion', texto: '🚫 Zona de Prohibición', descripcion: 'No se pueden otorgar nuevos derechos (ni definitivos ni provisionales).' };
+    } else if (tipoLimit.includes('restricción') || tipoLimit.includes('restriccion')) {
+        return { clase: 'restriccion', texto: '⚠️ Área de Restricción', descripcion: 'Solo es posible otorgar derechos provisionales.' };
+    } else {
+        return { clase: 'libre', texto: '✅ Área Libre (sin restricción)', descripcion: 'Se pueden solicitar nuevos derechos normalmente.' };
+    }
 }
 
 // ============ ICONOS ============
@@ -600,7 +615,6 @@ function analizarRelacionEspacial(puntoUsuario, feature) {
     }
 }
 
-// Popup con nombres amigables
 function crearPopup(feature) {
     const propsAmigables = obtenerPropiedadesAmigables(feature);
     let html = '';
@@ -661,7 +675,7 @@ function crearCapa(url, color, nombre, tipoGeometria, mostrarEtiqueta = false) {
         });
 }
 
-// Carga de capas con nombres amigables en el control
+// Carga de capas
 Promise.all([
     crearCapa('./SubRM2.geojson', '#e74c3c', 'Subsubcuencas', 'poligono', false),
     crearCapa('./Juntas.geojson', '#2980b9', 'Juntas de Vigilancia', 'punto'),
@@ -793,7 +807,6 @@ function actualizarMarcador(posicion, volar = false) {
     const latLng = [lat, lng];
     ultimaPosicion = { lat, lng, precision: precisionMetros };
 
-    // Convertir a UTM
     const utm = convertirAUTM(lat, lng);
     utmCoords = utm;
     document.getElementById('displayNorte').textContent = utm.norte.toFixed(0);
@@ -819,13 +832,25 @@ function actualizarMarcador(posicion, volar = false) {
     document.getElementById('toggleMarkerBtn').textContent = '✕';
     document.getElementById('toggleMarkerBtn').title = 'Ocultar marcador';
 
-    // Popup con detalles (usando nombres amigables)
+    // === Obtener datos de capas y clasificar restricción ===
+    const datosCapa = obtenerDatosCapaPunto(lat, lng);
+    const restriccionProps = datosCapa['Restricciones'] || {};
+    const estadoRestriccion = clasificarRestriccion(restriccionProps);
+
+    // Mostrar estado de restricción en el panel
+    const estadoDiv = document.getElementById('estadoRestriccionPanel');
+    estadoDiv.style.display = 'block';
+    estadoDiv.className = 'estado-restriccion ' + estadoRestriccion.clase;
+    estadoDiv.innerHTML = `<strong>${estadoRestriccion.texto}</strong><br><small>${estadoRestriccion.descripcion}</small>`;
+
+    // Popup con detalles incluyendo restricción
     const puntoTurf = turf.point([lng, lat]);
     let contenidoPopup = `<b>📍 Tu ubicación</b><br>
                           <b>UTM (WGS84, H${utm.huso}):</b> N ${utm.norte.toFixed(0)}, E ${utm.este.toFixed(0)}<br>
                           <b>Precisión:</b> ~${Math.round(precisionMetros)} m<hr>`;
-    let encontradoAlgo = false;
+    contenidoPopup += `<b>🔒 Estado del área:</b> ${estadoRestriccion.texto}<br>${estadoRestriccion.descripcion}<br><hr>`;
 
+    let encontradoAlgo = false;
     capasCargadas.forEach(item => {
         let capaInfo = '';
         let contadorFeatures = 0;
@@ -905,7 +930,7 @@ function toggleMarker() {
     }
 }
 
-// ============ BUFFER CON NOMBRES AMIGABLES ============
+// ============ BUFFER ============
 function cerrarBuffer() {
     document.getElementById('buffer-panel').style.display = 'none';
     if (bufferCircle) {
@@ -1009,7 +1034,6 @@ function analizarBuffer() {
                 capaRes.elementos.forEach(elem => {
                     const propsAmigables = obtenerPropiedadesAmigables(elem.feature);
                     let propsHTML = '';
-                    // Mostrar máximo 4 propiedades para no saturar
                     const maxProps = 4;
                     propsAmigables.slice(0, maxProps).forEach(p => {
                         propsHTML += `<span><span class="prop-clave">${p.clave}:</span> ${p.valor}</span>`;
@@ -1048,7 +1072,7 @@ function restablecerBotonBuffer() {
     btn.disabled = false;
 }
 
-// ============ CAPTURA DE MAPA (SIN CONTROLES) ============
+// ============ CAPTURA DE MAPA ============
 function capturarMapa() {
     return new Promise((resolve) => {
         const controlContainer = document.querySelector('.leaflet-control-container');
@@ -1093,35 +1117,37 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
     const este = utm.este.toFixed(0);
     const huso = utm.huso;
 
-    // Función helper para extraer propiedades con nombres amigables y filtrar ocultos
+    // Extraer datos desde todas las capas
+    const subcuenca = datosCapa['Subsubcuencas'] || {};
+    const restriccion = datosCapa['Restricciones'] || {};
+    const juntas = datosCapa['Juntas de Vigilancia'] || {};
+
+    // Obtener comuna y provincia desde Juntas o Subcuencas o Restricciones
     function getProp(obj, ...keys) {
         for (let key of keys) {
             if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
         }
         return 'No definido';
     }
-
-    const subcuenca = datosCapa['Subsubcuencas'] || {};
-    const restriccion = datosCapa['Restricciones'] || {};
-    const comuna = getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna') || getProp(restriccion, 'COMUNA', 'NOM_COMUNA', 'Comuna');
-    const provincia = getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia') || getProp(restriccion, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
-    const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region') || getProp(restriccion, 'REGION', 'NOM_REGION', 'Region');
+    const comuna = getProp(juntas, 'Nom_Com', 'COMUNA', 'NOM_COMUNA', 'Comuna') ||
+                   getProp(subcuenca, 'COMUNA', 'NOM_COMUNA', 'Comuna') ||
+                   getProp(restriccion, 'COMUNA', 'NOM_COMUNA', 'Comuna');
+    const provincia = getProp(juntas, 'Nom_Prov', 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia') ||
+                      getProp(subcuenca, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia') ||
+                      getProp(restriccion, 'PROVINCIA', 'NOM_PROVINCIA', 'Provincia');
+    const region = getProp(subcuenca, 'REGION', 'NOM_REGION', 'Region') ||
+                   getProp(restriccion, 'REGION', 'NOM_REGION', 'Region');
     const cuenca = getProp(subcuenca, 'NOM_CUEN', 'CUENCA', 'Cuenca');
     const subcuencaNombre = getProp(subcuenca, 'NOM_SUBC', 'NOM_SSUBC', 'SUBCUENCA');
     const acuifero = getProp(subcuenca, 'NOM_ACUIF', 'ACUIFERO', 'Acuifero');
     const shac = getProp(restriccion, 'SHAC', 'COD_SHAC', 'SHAC');
-    const tipoRestriccion = getProp(restriccion, 'TIPO', 'NOMBRE', 'Sin restricción');
 
-    let restriccionTexto = 'No se encuentra en área de restricción o prohibición.';
-    let restriccionClase = '';
-    if (tipoRestriccion && (tipoRestriccion.toLowerCase().includes('restricción') || tipoRestriccion.toLowerCase().includes('restriccion'))) {
-        restriccionTexto = 'El punto se encuentra en un Área de Restricción. Solo es posible otorgar derechos provisionales.';
-        restriccionClase = 'restriccion';
-    } else if (tipoRestriccion && (tipoRestriccion.toLowerCase().includes('prohibición') || tipoRestriccion.toLowerCase().includes('prohibicion'))) {
-        restriccionTexto = 'El punto se encuentra en una Zona de Prohibición. No es posible otorgar nuevos derechos.';
-        restriccionClase = 'prohibicion';
-    }
+    // Clasificar restricción
+    const estadoRestriccion = clasificarRestriccion(restriccion);
+    let restriccionTexto = estadoRestriccion.texto + ': ' + estadoRestriccion.descripcion;
+    let restriccionClase = estadoRestriccion.clase;
 
+    // Capturar imagen
     const imgData = await capturarMapa();
     const imgTag = imgData ? `<img src="${imgData}" alt="Mapa" style="max-width:100%; border:2px solid #1a4a33; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" />` : '<p>No se pudo capturar la imagen del mapa.</p>';
 
@@ -1142,6 +1168,10 @@ h3 { font-size: 13pt; margin-top: 15px; }
 .firma { margin-top: 40px; }
 .otrosi { margin-top: 20px; }
 .page-break { page-break-before: always; }
+.estado { padding: 8px 12px; border-radius: 6px; }
+.estado.prohibicion { background: #f8d7da; border-left: 6px solid #e74c3c; }
+.estado.restriccion { background: #fff3cd; border-left: 6px solid #f39c12; }
+.estado.libre { background: #d4edda; border-left: 6px solid #27ae60; }
 </style>
 </head>
 <body>
@@ -1178,7 +1208,13 @@ ${volumenAnual ? `<tr><td>Volumen anual</td><td>${volumenAnual} m³</td></tr>` :
 <h2>VII. USO Y DESTINO DEL AGUA</h2>
 <p>Las aguas serán destinadas a ${uso}, lo que justifica el caudal solicitado.</p>
 
-<h2>VIII. PETICIÓN</h2>
+<h2>VIII. ESTADO DEL ÁREA SEGÚN SHAC</h2>
+<div class="estado ${restriccionClase}">
+<strong>${estadoRestriccion.texto}</strong><br>
+${estadoRestriccion.descripcion}
+</div>
+
+<h2>IX. PETICIÓN</h2>
 <p>POR TANTO, solicito a Usted tener por presentada la presente solicitud y, en definitiva, otorgar el derecho de aprovechamiento de aguas ${fuente.toLowerCase()} conforme a lo expuesto, declarándolo admisible y prosiguiendo con la tramitación legal.</p>
 
 <div class="firma">
@@ -1235,9 +1271,9 @@ h3 { color: #1d6b44; margin-top: 24px; border-left: 6px solid #2d5a3f; padding-l
 .tabla td { padding: 8px 12px; border-bottom: 1px solid #e0e8e3; }
 .tabla td:first-child { font-weight: 600; width: 30%; color: #1a4a33; }
 .alert { padding: 12px 16px; border-radius: 8px; }
-.alert.restriccion { background: #fff3cd; border-left: 6px solid #f39c12; }
 .alert.prohibicion { background: #f8d7da; border-left: 6px solid #e74c3c; }
-.alert.ok { background: #d4edda; border-left: 6px solid #27ae60; }
+.alert.restriccion { background: #fff3cd; border-left: 6px solid #f39c12; }
+.alert.libre { background: #d4edda; border-left: 6px solid #27ae60; }
 </style>
 </head>
 <body>
@@ -1272,8 +1308,9 @@ h3 { color: #1d6b44; margin-top: 24px; border-left: 6px solid #2d5a3f; padding-l
 
 <div class="seccion">
 <h3>4. Análisis de restricciones</h3>
-<div class="alert ${restriccionClase || 'ok'}">
-${restriccionTexto}
+<div class="alert ${restriccionClase}">
+<strong>${estadoRestriccion.texto}</strong><br>
+${estadoRestriccion.descripcion}
 </div>
 </div>
 
@@ -1388,4 +1425,4 @@ document.getElementById('formSolicitud').addEventListener('submit', function(e) 
 document.getElementById('panelBadge').style.background = '#6a8a7a';
 </script>
 </body>
-</html>
+    </html>
