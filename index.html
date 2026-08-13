@@ -114,7 +114,7 @@
         #info-panel .estado-restriccion.prohibicion { background: #f8d7da; border-left-color: #e74c3c; color: #721c24; }
         #info-panel .estado-restriccion.restriccion { background: #fff3cd; border-left-color: #f39c12; color: #856404; }
         #info-panel .estado-restriccion.libre { background: #d4edda; border-left-color: #27ae60; color: #155724; }
-        /* ---------- PANEL DE BUFFER (independiente) ---------- */
+        /* ---------- PANEL DE BUFFER ---------- */
         #buffer-panel {
             position: absolute;
             bottom: 110px;
@@ -391,7 +391,7 @@
     </div>
 </div>
 
-<!-- PANEL DE BUFFER (independiente) -->
+<!-- PANEL DE BUFFER -->
 <div id="buffer-panel">
     <div class="buffer-header">
         <div class="titulo">🔵 Resultados del Buffer</div>
@@ -559,7 +559,6 @@ function obtenerPropiedadesAmigables(feature) {
 
 // ============ FUNCIÓN PARA CLASIFICAR RESTRICCIÓN ============
 function clasificarRestriccion(props) {
-    // Buscar el campo TIPO_LIMIT o TIPO
     let tipoLimit = props.TIPO_LIMIT || props.TIPO || '';
     tipoLimit = tipoLimit.toLowerCase().trim();
     if (tipoLimit.includes('prohibición') || tipoLimit.includes('prohibicion')) {
@@ -832,7 +831,7 @@ function actualizarMarcador(posicion, volar = false) {
     document.getElementById('toggleMarkerBtn').textContent = '✕';
     document.getElementById('toggleMarkerBtn').title = 'Ocultar marcador';
 
-    // === Obtener datos de capas y clasificar restricción ===
+    // Obtener datos de capas y clasificar restricción
     const datosCapa = obtenerDatosCapaPunto(lat, lng);
     const restriccionProps = datosCapa['Restricciones'] || {};
     const estadoRestriccion = clasificarRestriccion(restriccionProps);
@@ -1105,7 +1104,7 @@ function capturarMapa() {
     });
 }
 
-// ============ GENERACIÓN DE DOCUMENTOS ============
+// ============ GENERACIÓN DE DOCUMENTOS (CONSISTENTE CON RESTRICCIÓN) ============
 async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter, volumenAnual, observaciones, datosCapa, domicilio, email) {
     const lat = ultimaPosicion.lat;
     const lng = ultimaPosicion.lng;
@@ -1122,7 +1121,6 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
     const restriccion = datosCapa['Restricciones'] || {};
     const juntas = datosCapa['Juntas de Vigilancia'] || {};
 
-    // Obtener comuna y provincia desde Juntas o Subcuencas o Restricciones
     function getProp(obj, ...keys) {
         for (let key of keys) {
             if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
@@ -1144,10 +1142,20 @@ async function generarDocumentos(solicitante, rut, caudal, fuente, uso, caracter
 
     // Clasificar restricción
     const estadoRestriccion = clasificarRestriccion(restriccion);
-    let restriccionTexto = estadoRestriccion.texto + ': ' + estadoRestriccion.descripcion;
-    let restriccionClase = estadoRestriccion.clase;
+    const restriccionClase = estadoRestriccion.clase;
+    const restriccionTextoCompleto = estadoRestriccion.texto + ': ' + estadoRestriccion.descripcion;
 
-    // Capturar imagen
+    // Texto de disponibilidad según el tipo de restricción
+    let disponibilidadTexto = '';
+    if (restriccionClase === 'prohibicion') {
+        disponibilidadTexto = 'El punto se encuentra en una Zona de Prohibición. De acuerdo a la normativa vigente, no es posible otorgar nuevos derechos de aprovechamiento de aguas, ni definitivos ni provisionales, en esta área. Por lo tanto, la presente solicitud no puede ser aceptada para su tramitación.';
+    } else if (restriccionClase === 'restriccion') {
+        disponibilidadTexto = 'El punto se encuentra en un Área de Restricción. Según lo establecido por la DGA, en estas zonas solo es posible otorgar derechos de aprovechamiento de aguas de carácter provisional, sujetos a las condiciones que fije la autoridad. La solicitud presentada podrá ser evaluada bajo esta modalidad, siempre que se cumplan los requisitos aplicables.';
+    } else {
+        disponibilidadTexto = 'El punto se encuentra en un Área Libre (sin declaración de restricción o prohibición). De acuerdo a los antecedentes disponibles, el caudal solicitado es compatible con la oferta hídrica de la zona y no se han identificado restricciones que impidan el otorgamiento del derecho. La DGA evaluará la solicitud bajo el procedimiento normal para verificar la disponibilidad del recurso y la no afectación a terceros.';
+    }
+
+    // Capturar imagen del mapa
     const imgData = await capturarMapa();
     const imgTag = imgData ? `<img src="${imgData}" alt="Mapa" style="max-width:100%; border:2px solid #1a4a33; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" />` : '<p>No se pudo capturar la imagen del mapa.</p>';
 
@@ -1200,7 +1208,7 @@ ${volumenAnual ? `<tr><td>Volumen anual</td><td>${volumenAnual} m³</td></tr>` :
 <div class="page-break"></div>
 
 <h2>V. DISPONIBILIDAD DEL RECURSO</h2>
-<p>Según los antecedentes técnicos disponibles, el caudal solicitado es compatible con la oferta hídrica de la zona, no existiendo restricciones que impidan el otorgamiento del derecho. El punto de captación se ubica en el mismo acuífero, por lo que no se generará afectación a derechos de terceros.</p>
+<p>${disponibilidadTexto}</p>
 
 <h2>VI. ANÁLISIS DE AFECTACIÓN A TERCEROS</h2>
 <p>La presente solicitud no afecta derechos de terceros, ya que el punto de captación se encuentra en el mismo sector hidrogeológico y se respetan los caudales ecológicos y las distancias mínimas establecidas por la normativa.</p>
@@ -1215,7 +1223,7 @@ ${estadoRestriccion.descripcion}
 </div>
 
 <h2>IX. PETICIÓN</h2>
-<p>POR TANTO, solicito a Usted tener por presentada la presente solicitud y, en definitiva, otorgar el derecho de aprovechamiento de aguas ${fuente.toLowerCase()} conforme a lo expuesto, declarándolo admisible y prosiguiendo con la tramitación legal.</p>
+<p>POR TANTO, ${restriccionClase === 'prohibicion' ? 'no siendo posible el otorgamiento del derecho solicitado por encontrarse en Zona de Prohibición, solicito se tenga por presentada la solicitud a los fines de su registro y archivo, o bien se me indique los pasos a seguir para una eventual solicitud en otra ubicación.' : 'solicito a Usted tener por presentada la presente solicitud y, en definitiva, otorgar el derecho de aprovechamiento de aguas '+fuente.toLowerCase()+' conforme a lo expuesto, declarándolo admisible y prosiguiendo con la tramitación legal.'}</p>
 
 <div class="firma">
 <p>${solicitante}</p>
@@ -1257,7 +1265,7 @@ ${imgTag}
 </body>
 </html>`;
 
-    // 3. Memoria explicativa
+    // 3. Memoria explicativa (con disponibilidad consistente)
     const memoriaHtml = `
 <!DOCTYPE html>
 <html>
@@ -1303,7 +1311,7 @@ h3 { color: #1d6b44; margin-top: 24px; border-left: 6px solid #2d5a3f; padding-l
 
 <div class="seccion">
 <h3>3. Disponibilidad del recurso</h3>
-<p>Según antecedentes técnicos, el caudal solicitado es compatible con la oferta hídrica de la zona. El punto de captación se ubica en el mismo acuífero, por lo que no se generará afectación a derechos de terceros.</p>
+<p>${disponibilidadTexto}</p>
 </div>
 
 <div class="seccion">
@@ -1322,7 +1330,7 @@ ${estadoRestriccion.descripcion}
 
 <div class="seccion">
 <h3>6. Conclusiones</h3>
-<p>La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación conforme a la normativa vigente.</p>
+<p>${restriccionClase === 'prohibicion' ? 'La solicitud no puede ser admitida a trámite debido a la condición de Zona de Prohibición del área. Se recomienda evaluar otras ubicaciones para futuras solicitudes.' : 'La solicitud es legalmente procedente, existe disponibilidad del recurso y no se perjudican derechos de terceros. Por tanto, se solicita la aprobación conforme a la normativa vigente.'}</p>
 </div>
 </body>
 </html>`;
@@ -1425,4 +1433,4 @@ document.getElementById('formSolicitud').addEventListener('submit', function(e) 
 document.getElementById('panelBadge').style.background = '#6a8a7a';
 </script>
 </body>
-    </html>
+</html>
